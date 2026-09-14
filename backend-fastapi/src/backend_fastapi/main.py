@@ -1,0 +1,76 @@
+from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, Header, BackgroundTasks
+from pydantic import BaseModel
+import pdfplumber
+import io
+import os
+from dotenv import load_dotenv
+from motor.motor_asyncio import AsyncIOMotorClient
+from bson import ObjectId
+
+from .graph import app_graph
+
+load_dotenv()
+
+app = FastAPI()
+
+INTERNAL_SECRET = os.getenv("INTERNAL_SECRET", "internal-secret-token")
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/lexpilot")
+
+client = AsyncIOMotorClient(MONGODB_URI)
+db = client.get_default_database()
+
+def verify_secret(x_internal_secret: str = Header(None)):
+    if x_internal_secret != INTERNAL_SECRET:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+class ProcessRequest(BaseModel):
+    documentId: str
+    jurisdiction: str = None
+
+@app.post("/internal/process")
+async def process_document(request: ProcessRequest, _ = Depends(verify_secret)):
+    return {"status": "success", "documentId": request.documentId}
+
+async def process_pdf_background(document_id: str, text: str):
+    try:
+        initial_state = {"document_id": document_id, "text": text, "segments": [], "clauses": []}
+        final_state = app_graph.invoke(initial_state)
+        
+        # Save results to MongoDB document_clauses
+        clauses = final_state.get("clauses", [])
+        for c in clauses:
+            doc_clause = {
+                "documentId": ObjectId(document_id),
+                "clauseType": c.get("clause_type"),
+                "originalText": c.get("original_text"),
+                "sourceSpan": c.get("source_span"),
+                "simpleExplanation": c.get("simple_explanation"),
+                "detailedExplanation": None,
+                "riskTier": c.get("risk_tier"),
+                "riskReasoning": c.get("risk_reasoning"),
+                "confidence": 1.0
+            }
+            await db.documentclauses.insert_one(doc_clause)
+            
+        await db.documents.update_one({"_id": ObjectId(document_id)}, {"$set": {"status": "processed"}})
+    except Exception as e:
+        await db.documents.update_one({"_id": ObjectId(document_id)}, {"$set": {"status": "failed", "error": str(e)}})
+
+
+@app.post("/internal/upload")
+async def upload_document(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    documentId: str = Form(...),
+    _ = Depends(verify_secret)
+):
+    content = await file.read()
+    text = ""
+    if file.filename.endswith(".pdf"):
+        with pdfplumber.open(io.BytesIO(content)) as pdf:
+            for page in pdf.pages:
+                text += (page.extract_text() or "") + "\n"
+    
+    background_tasks.add_task(process_pdf_background, documentId, text)
+    
+    return {"status": "processing", "documentId": documentId}
