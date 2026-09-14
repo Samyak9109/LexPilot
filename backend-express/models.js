@@ -37,8 +37,18 @@ const documentClauseSchema = new mongoose.Schema({
   confidence: { type: Number }
 });
 
+const qaHistorySchema = new mongoose.Schema({
+  documentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Document', required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  question: { type: String, required: true },
+  answer: { type: String, required: true },
+  citedClauseIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'DocumentClause' }],
+  timestamp: { type: Date, default: Date.now }
+});
+
 const User = mongoose.model('User', userSchema);
 const Document = mongoose.model('Document', documentSchema);
 const DocumentClause = mongoose.model('DocumentClause', documentClauseSchema);
+const QAHistory = mongoose.model('QAHistory', qaHistorySchema);
 
-module.exports = { User, Document, DocumentClause };
+module.exports = { User, Document, DocumentClause, QAHistory };

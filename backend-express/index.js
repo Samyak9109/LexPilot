@@ -7,7 +7,7 @@ const cors = require('cors');
 const axios = require('axios');
 const fs = require('fs');
 const FormData = require('form-data');
-const { User, Document, DocumentClause } = require('./models');
+const { User, Document, DocumentClause, QAHistory } = require('./models');
 
 const app = express();
 app.use(express.json());
@@ -110,6 +110,40 @@ app.get('/api/documents/:id', authenticateToken, async (req, res) => {
     const clauses = await DocumentClause.find({ documentId: doc._id });
     res.json({ document: doc, clauses });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+app.post('/api/documents/:id/ask', authenticateToken, async (req, res) => {
+  try {
+    const doc = await Document.findOne({ _id: req.params.id, userId: req.user.userId });
+    if (!doc) return res.status(404).json({ error: 'Document not found' });
+    
+    const { question } = req.body;
+    if (!question) return res.status(400).json({ error: 'Question is required' });
+
+    // Call FastAPI internal ask endpoint
+    const response = await axios.post(`${FASTAPI_URL}/internal/ask`, {
+      documentId: doc._id.toString(),
+      question: question
+    }, {
+      headers: { 'X-Internal-Secret': INTERNAL_SECRET }
+    });
+
+    // Save to QAHistory
+    const qa = new QAHistory({
+      documentId: doc._id,
+      userId: req.user.userId,
+      question: question,
+      answer: response.data.answer,
+      citedClauseIds: response.data.citations || []
+    });
+    await qa.save();
+
+    res.json(response.data);
+  } catch (err) {
+    if (err.response) {
+      return res.status(err.response.status).json(err.response.data);
+    }
     res.status(500).json({ error: err.message });
   }
 });
