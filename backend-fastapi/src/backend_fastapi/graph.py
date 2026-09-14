@@ -1,6 +1,6 @@
 from typing import Annotated, TypedDict, List, Dict, Any
 from langgraph.graph import StateGraph, START, END
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import PromptTemplate
 from pydantic import BaseModel, Field
 import os
@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# We need the API key for OpenAI
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+# We need the API key for Gemini (GEMINI_API_KEY)
+llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0)
 
 class ClauseState(TypedDict):
     original_text: str
