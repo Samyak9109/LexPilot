@@ -85,6 +85,50 @@ function Dashboard() {
   );
 }
 
+function ChatPanel({ docId }: { docId: string }) {
+  const [question, setQuestion] = useState('');
+  const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const handleAsk = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!question) return;
+    setLoading(true);
+    try {
+      const res = await axios.post(`/api/documents/${docId}/ask`, { question });
+      setHistory(prev => [...prev, { q: question, a: res.data.answer, citations: res.data.citations }]);
+      setQuestion('');
+    } catch (err: any) {
+      setHistory(prev => [...prev, { q: question, a: 'Error: ' + (err.response?.data?.error || 'Failed to get answer') }]);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ flex: 1, padding: '1rem', borderLeft: '1px solid #ccc', maxHeight: '80vh', overflowY: 'auto' }}>
+      <h3>Document Q&A</h3>
+      <div style={{ marginBottom: '1rem' }}>
+        {history.map((h, i) => (
+          <div key={i} style={{ marginBottom: '1rem' }}>
+            <p><strong>You:</strong> {h.q}</p>
+            <p><strong>LexPilot:</strong> {h.a}</p>
+            {h.citations?.length > 0 && (
+              <div style={{ fontSize: '0.8rem', color: '#666' }}>
+                Citations: {h.citations.map((c: string) => <span key={c} style={{ border: '1px solid #ccc', borderRadius: '4px', padding: '2px 4px', marginRight: '4px' }}>Clause {c}</span>)}
+              </div>
+            )}
+          </div>
+        ))}
+        {loading && <p><em>Thinking...</em></p>}
+      </div>
+      <form onSubmit={handleAsk} style={{ display: 'flex', gap: '0.5rem' }}>
+        <input type="text" value={question} onChange={e => setQuestion(e.target.value)} placeholder="Ask about this document..." style={{ flex: 1 }} />
+        <button type="submit" disabled={loading}>Ask</button>
+      </form>
+    </div>
+  );
+}
+
 function DocumentView() {
   const { id } = useParams();
   const [doc, setDoc] = useState<any>(null);
@@ -117,24 +161,36 @@ function DocumentView() {
       
       {doc.status === 'pending' && <p>Processing document, please wait...</p>}
       
-      {clauses.map((c, i) => (
-        <div key={i} style={{ border: '1px solid #eee', padding: '1rem', marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
-          <div style={{ flex: 1 }}>
-            <strong>Original Clause: {c.clauseType}</strong>
-            <p style={{ fontFamily: 'monospace', backgroundColor: '#f9f9f9', padding: '0.5rem' }}>{c.originalText}</p>
-          </div>
-          <div style={{ flex: 1, backgroundColor: '#f0f8ff', padding: '0.5rem' }}>
-            <strong>Plain English</strong>
-            <p>{c.simpleExplanation || 'No explanation available.'}</p>
-            {c.riskTier && (
-              <div style={{ marginTop: '1rem', borderTop: '1px solid #ddd', paddingTop: '0.5rem' }}>
-                <strong>Risk: {c.riskTier.toUpperCase()}</strong>
-                <p>{c.riskReasoning}</p>
+      <div style={{ display: 'flex', gap: '2rem' }}>
+        <div style={{ flex: 2, maxHeight: '80vh', overflowY: 'auto', paddingRight: '1rem' }}>
+          {clauses.map((c, i) => {
+            const riskColor = c.riskTier === 'red' ? '#ffebee' : c.riskTier === 'yellow' ? '#fff3e0' : '#e8f5e9';
+            const riskLabel = c.riskTier === 'red' ? '🔴 HIGH RISK' : c.riskTier === 'yellow' ? '🟡 MEDIUM RISK' : '🟢 STANDARD';
+            return (
+              <div key={i} id={`clause-${c._id}`} style={{ border: '1px solid #eee', padding: '1rem', marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
+                <div style={{ flex: 1 }}>
+                  <strong>Original Clause: {c.clauseType}</strong>
+                  <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: '0.5rem' }}>ID: {c._id}</div>
+                  <p style={{ fontFamily: 'monospace', backgroundColor: '#f9f9f9', padding: '0.5rem' }}>{c.originalText}</p>
+                </div>
+                <div style={{ flex: 1, backgroundColor: '#f0f8ff', padding: '0.5rem' }}>
+                  <strong>Plain English</strong>
+                  <p>{c.simpleExplanation || 'No explanation available.'}</p>
+                  {c.riskTier && (
+                    <div style={{ marginTop: '1rem', backgroundColor: riskColor, border: '1px solid #ddd', padding: '0.5rem', borderRadius: '4px' }}>
+                      <strong>{riskLabel}</strong>
+                      <p style={{ margin: '0.5rem 0 0 0' }}>{c.riskReasoning}</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
+            );
+          })}
         </div>
-      ))}
+        
+        {/* Chat Panel */}
+        <ChatPanel docId={doc._id} />
+      </div>
     </div>
   );
 }
