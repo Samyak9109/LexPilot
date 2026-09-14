@@ -6,8 +6,10 @@ import os
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 from .graph import app_graph
+from .rag import answer_question
 
 load_dotenv()
 
@@ -18,6 +20,7 @@ MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/lexpilot")
 
 client = AsyncIOMotorClient(MONGODB_URI)
 db = client.get_default_database()
+embeddings_model = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
 
 def verify_secret(x_internal_secret: str = Header(None)):
     if x_internal_secret != INTERNAL_SECRET:
@@ -27,9 +30,13 @@ class ProcessRequest(BaseModel):
     documentId: str
     jurisdiction: str = None
 
-@app.post("/internal/process")
-async def process_document(request: ProcessRequest, _ = Depends(verify_secret)):
-    return {"status": "success", "documentId": request.documentId}
+class AskRequest(BaseModel):
+    documentId: str
+    question: str
+
+@app.post("/internal/ask")
+async def ask_document(request: AskRequest, _ = Depends(verify_secret)):
+    return await answer_question(request.documentId, request.question, db, embeddings_model)
 
 async def process_pdf_background(document_id: str, text: str):
     try:
@@ -38,6 +45,7 @@ async def process_pdf_background(document_id: str, text: str):
         
         # Save results to MongoDB document_clauses
         clauses = final_state.get("clauses", [])
+        
         for c in clauses:
             doc_clause = {
                 "documentId": ObjectId(document_id),
@@ -50,7 +58,18 @@ async def process_pdf_background(document_id: str, text: str):
                 "riskReasoning": c.get("risk_reasoning"),
                 "confidence": 1.0
             }
-            await db.documentclauses.insert_one(doc_clause)
+            res = await db.documentclauses.insert_one(doc_clause)
+            
+            # Embed the clause and store in document_chunks
+            vector = embeddings_model.embed_query(c.get("original_text"))
+            chunk_doc = {
+                "documentId": ObjectId(document_id),
+                "clauseId": res.inserted_id,
+                "chunkText": c.get("original_text"),
+                "clauseType": c.get("clause_type"),
+                "embedding": vector
+            }
+            await db.document_chunks.insert_one(chunk_doc)
             
         await db.documents.update_one({"_id": ObjectId(document_id)}, {"$set": {"status": "processed"}})
     except Exception as e:
