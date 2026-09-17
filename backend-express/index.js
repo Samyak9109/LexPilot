@@ -73,6 +73,7 @@ app.post('/api/documents', authenticateToken, upload.single('document'), async (
       userId: req.user.userId,
       filename: req.file.originalname,
       jurisdiction: req.body.jurisdiction || 'Global/Agnostic',
+      language: req.body.language || 'English',
       status: 'pending'
     });
     await doc.save();
@@ -81,6 +82,7 @@ app.post('/api/documents', authenticateToken, upload.single('document'), async (
     form.append('file', fs.createReadStream(req.file.path), req.file.originalname);
     form.append('documentId', doc._id.toString());
     form.append('jurisdiction', doc.jurisdiction);
+    form.append('language', doc.language);
 
     axios.post(`${FASTAPI_URL}/internal/upload`, form, {
       headers: {

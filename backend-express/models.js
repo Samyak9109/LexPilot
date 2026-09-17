@@ -22,6 +22,7 @@ const documentSchema = new mongoose.Schema({
   uploadDate: { type: Date, default: Date.now },
   status: { type: String, default: 'pending' },
   jurisdiction: { type: String },
+  language: { type: String, default: 'English' },
   docType: { type: String }
 });
 

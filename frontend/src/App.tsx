@@ -99,6 +99,12 @@ function Dashboard() {
           <option value="UK">United Kingdom</option>
           <option value="India">India</option>
         </select>
+        <select name="language" style={{ marginLeft: '1rem' }}>
+          <option value="English">English</option>
+          <option value="Spanish">Español</option>
+          <option value="French">Français</option>
+          <option value="Hindi">हिन्दी</option>
+        </select>
         <button type="submit" disabled={!file} style={{ marginLeft: '1rem' }}>Analyze Document</button>
         <p style={{ color: 'red' }}>{status}</p>
       </form>

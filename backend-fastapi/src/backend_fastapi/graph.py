@@ -26,6 +26,7 @@ class DocumentState(TypedDict):
     segments: List[str]
     clauses: List[ClauseState]
     jurisdiction: str
+    language: str
 
 # Pydantic Schemas for Structured Output
 class ExtractedEntities(BaseModel):
@@ -38,7 +39,7 @@ class ClauseClassification(BaseModel):
     clause_type: str = Field(description="One of: parties, effective_date, payment_terms, termination_conditions, confidentiality, liability, dispute_resolution, general")
 
 class ClauseExplanation(BaseModel):
-    simple_explanation: str = Field(description="A one-sentence plain English explanation of this clause")
+    simple_explanation: str = Field(description="A one-sentence plain English explanation of this clause in the requested language")
 
 class RiskAssessment(BaseModel):
     risk_tier: str = Field(description="One of: green, yellow, red")
@@ -77,7 +78,8 @@ def extract_entities(state: DocumentState) -> DocumentState:
                     "entities": res.model_dump(),
                     "simple_explanation": None,
                     "risk_tier": None,
-                    "risk_reasoning": None
+                    "risk_reasoning": None,
+                    "market_benchmark": None
                 })
         except Exception:
             pass
@@ -97,11 +99,12 @@ def classify_clauses(state: DocumentState) -> DocumentState:
 
 def generate_explanations(state: DocumentState) -> DocumentState:
     clauses = state.get("clauses", [])
+    language = state.get("language", "English")
     explainer = llm.with_structured_output(ClauseExplanation)
     
     for c in clauses:
         try:
-            res = explainer.invoke(f"Explain this legal clause simply to a non-lawyer: {c['original_text']}")
+            res = explainer.invoke(f"Explain this legal clause simply to a non-lawyer. Reply ONLY in {language}. Clause: {c['original_text']}")
             c["simple_explanation"] = res.simple_explanation
         except Exception:
             c["simple_explanation"] = "Explanation generation failed."
