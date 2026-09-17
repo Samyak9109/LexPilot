@@ -46,9 +46,9 @@ class ChecklistRequest(BaseModel):
 async def api_generate_checklist(request: ChecklistRequest, _ = Depends(verify_secret)):
     return await generate_actionable_checklist(request.documentId, db)
 
-async def process_pdf_background(document_id: str, text: str):
+async def process_pdf_background(document_id: str, text: str, jurisdiction: str = "Global/Agnostic"):
     try:
-        initial_state = {"document_id": document_id, "text": text, "segments": [], "clauses": []}
+        initial_state = {"document_id": document_id, "text": text, "segments": [], "clauses": [], "jurisdiction": jurisdiction}
         final_state = app_graph.invoke(initial_state)
         
         # Save results to MongoDB document_clauses
@@ -89,6 +89,7 @@ async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     documentId: str = Form(...),
+    jurisdiction: str = Form("Global/Agnostic"),
     _ = Depends(verify_secret)
 ):
     content = await file.read()
@@ -98,6 +99,6 @@ async def upload_document(
             for page in pdf.pages:
                 text += (page.extract_text() or "") + "\n"
     
-    background_tasks.add_task(process_pdf_background, documentId, text)
+    background_tasks.add_task(process_pdf_background, documentId, text, jurisdiction)
     
     return {"status": "processing", "documentId": documentId}

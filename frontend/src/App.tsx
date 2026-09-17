@@ -57,7 +57,8 @@ function Dashboard() {
     axios.get('/api/documents').then(res => setDocs(res.data)).catch(console.error);
   }, []);
 
-  const handleUpload = async () => {
+  const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     if (!file) return;
     setStatus('Uploading...');
     
@@ -66,7 +67,7 @@ function Dashboard() {
       return;
     }
     
-    const formData = new FormData();
+    const formData = new FormData(e.currentTarget);
     formData.append('document', file);
     
     try {
@@ -90,11 +91,17 @@ function Dashboard() {
       <h1>LexPilot Dashboard</h1>
       <p>Upload a contract (PDF/DOCX) for analysis.</p>
       
-      <div style={{ border: '1px solid #ccc', padding: '1rem', marginTop: '1rem', borderRadius: '4px' }}>
-        <input type="file" accept=".pdf,.docx" onChange={e => setFile(e.target.files?.[0] || null)} aria-label="Upload document" />
-        <button onClick={handleUpload} disabled={!file} style={{ marginLeft: '1rem' }}>Analyze Document</button>
+      <form onSubmit={handleUpload} style={{ border: '1px solid #ccc', padding: '1rem', marginTop: '1rem', borderRadius: '4px' }}>
+        <input type="file" accept=".pdf,.docx" onChange={e => setFile(e.target.files?.[0] || null)} aria-label="Upload document" required />
+        <select name="jurisdiction" style={{ marginLeft: '1rem' }}>
+          <option value="Global/Agnostic">Global/Agnostic</option>
+          <option value="US">United States</option>
+          <option value="UK">United Kingdom</option>
+          <option value="India">India</option>
+        </select>
+        <button type="submit" disabled={!file} style={{ marginLeft: '1rem' }}>Analyze Document</button>
         <p style={{ color: 'red' }}>{status}</p>
-      </div>
+      </form>
 
       <div style={{ marginTop: '2rem' }}>
         <h2>Your Documents</h2>

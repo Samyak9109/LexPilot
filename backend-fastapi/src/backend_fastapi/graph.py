@@ -25,6 +25,7 @@ class DocumentState(TypedDict):
     text: str
     segments: List[str]
     clauses: List[ClauseState]
+    jurisdiction: str
 
 # Pydantic Schemas for Structured Output
 class ExtractedEntities(BaseModel):
@@ -105,11 +106,12 @@ def generate_explanations(state: DocumentState) -> DocumentState:
 
 def risk_score(state: DocumentState) -> DocumentState:
     clauses = state.get("clauses", [])
+    jurisdiction = state.get("jurisdiction", "Global/Agnostic")
     risker = llm.with_structured_output(RiskAssessment)
     
     for c in clauses:
         try:
-            res = risker.invoke(f"Assess the risk of this clause (green/yellow/red) and provide reasoning: {c['original_text']}")
+            res = risker.invoke(f"Assess the risk of this clause (green/yellow/red) according to the legal norms of {jurisdiction}. Provide reasoning explicitly mentioning {jurisdiction} laws or norms if applicable: {c['original_text']}")
             c["risk_tier"] = res.risk_tier
             c["risk_reasoning"] = res.risk_reasoning
         except Exception:

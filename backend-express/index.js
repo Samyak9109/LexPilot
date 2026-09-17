@@ -72,17 +72,15 @@ app.post('/api/documents', authenticateToken, upload.single('document'), async (
     const doc = new Document({
       userId: req.user.userId,
       filename: req.file.originalname,
+      jurisdiction: req.body.jurisdiction || 'Global/Agnostic',
       status: 'pending'
     });
     await doc.save();
 
-    // Proxy to FastAPI asynchronously
     const form = new FormData();
     form.append('file', fs.createReadStream(req.file.path), req.file.originalname);
-    
-    // We send documentId in the header or as part of form data?
-    // Let's call /internal/upload on FastAPI and pass documentId
     form.append('documentId', doc._id.toString());
+    form.append('jurisdiction', doc.jurisdiction);
 
     axios.post(`${FASTAPI_URL}/internal/upload`, form, {
       headers: {
