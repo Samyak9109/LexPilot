@@ -64,6 +64,7 @@ async def process_pdf_background(document_id: str, text: str, jurisdiction: str 
                 "detailedExplanation": None,
                 "riskTier": c.get("risk_tier"),
                 "riskReasoning": c.get("risk_reasoning"),
+                "keyDates": c.get("entities", {}).get("key_dates", []),
                 "confidence": 1.0
             }
             res = await db.documentclauses.insert_one(doc_clause)

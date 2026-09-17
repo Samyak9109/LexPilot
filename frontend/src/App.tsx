@@ -210,6 +210,8 @@ function DocumentView() {
   if (loading) return <div style={{ padding: '2rem' }}>Loading document status...</div>;
   if (!doc) return <div style={{ padding: '2rem' }}>Document not found.</div>;
 
+  const allKeyDates = clauses.flatMap(c => c.keyDates || []).filter(Boolean);
+
   return (
     <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column' }}>
       <div>
@@ -219,6 +221,15 @@ function DocumentView() {
           {loadingChecklist ? 'Generating Checklist...' : 'Generate Lawyer Checklist'}
         </button>
       </div>
+
+      {allKeyDates.length > 0 && (
+        <div style={{ backgroundColor: '#e3f2fd', border: '1px solid #90caf9', padding: '1rem', marginTop: '1rem', borderRadius: '4px' }}>
+          <h3>📅 Key Dates & Deadlines</h3>
+          <ul>
+            {allKeyDates.map((d: string, i: number) => <li key={i}>{d}</li>)}
+          </ul>
+        </div>
+      )}
       
       {checklist && (
         <div style={{ backgroundColor: '#fffbe6', border: '1px solid #ffe58f', padding: '1rem', marginTop: '1rem', borderRadius: '4px' }}>
