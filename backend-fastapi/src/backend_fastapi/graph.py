@@ -43,6 +43,7 @@ class ClauseExplanation(BaseModel):
 class RiskAssessment(BaseModel):
     risk_tier: str = Field(description="One of: green, yellow, red")
     risk_reasoning: str = Field(description="Why this risk tier was assigned")
+    market_benchmark: str = Field(default="", description="Briefly benchmark this clause against standard market norms (e.g., 'Market standard is 2 years, this is 5')")
 
 def parse_and_segment(state: DocumentState) -> DocumentState:
     # Structure-aware chunking approximation (by double newlines/paragraphs)
@@ -116,9 +117,11 @@ def risk_score(state: DocumentState) -> DocumentState:
             res = risker.invoke(f"Assess the risk of this clause (green/yellow/red) according to the legal norms of {jurisdiction}. Provide reasoning explicitly mentioning {jurisdiction} laws or norms if applicable: {c['original_text']}")
             c["risk_tier"] = res.risk_tier
             c["risk_reasoning"] = res.risk_reasoning
+            c["market_benchmark"] = res.market_benchmark
         except Exception:
             c["risk_tier"] = "yellow"
             c["risk_reasoning"] = "Could not assess risk automatically."
+            c["market_benchmark"] = ""
     return {"clauses": clauses}
 
 workflow = StateGraph(DocumentState)

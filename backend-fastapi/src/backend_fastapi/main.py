@@ -64,6 +64,7 @@ async def process_pdf_background(document_id: str, text: str, jurisdiction: str 
                 "detailedExplanation": None,
                 "riskTier": c.get("risk_tier"),
                 "riskReasoning": c.get("risk_reasoning"),
+                "marketBenchmark": c.get("market_benchmark", ""),
                 "keyDates": c.get("entities", {}).get("key_dates", []),
                 "glossary": c.get("entities", {}).get("glossary", {}),
                 "confidence": 1.0

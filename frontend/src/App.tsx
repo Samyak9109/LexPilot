@@ -266,7 +266,18 @@ function DocumentView() {
                   {c.riskTier && (
                     <div style={{ marginTop: '1rem', backgroundColor: riskColor, border: '1px solid #ddd', padding: '0.5rem', borderRadius: '4px' }}>
                       <strong>{riskLabel}</strong>
-                      <p style={{ margin: '0.5rem 0 0 0' }}>{c.riskReasoning}</p>
+                      {c.riskReasoning && (
+                        <div style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: '#555' }}>
+                          <strong>Why?</strong>
+                          <p style={{ margin: '0.5rem 0 0 0' }}>{c.riskReasoning}</p>
+                        </div>
+                      )}
+                      {c.marketBenchmark && (
+                        <div style={{ marginTop: '0.5rem', fontSize: '0.9rem', color: '#555', borderLeft: '3px solid #ccc', paddingLeft: '0.5rem' }}>
+                          <strong>Market Benchmark:</strong>
+                          <p style={{ margin: '0.5rem 0 0 0' }}>{c.marketBenchmark}</p>
+                        </div>
+                      )}
                     </div>
                   )}
                   {c.glossary && Object.keys(c.glossary).length > 0 && (
