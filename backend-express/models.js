@@ -35,6 +35,7 @@ const documentClauseSchema = new mongoose.Schema({
   riskTier: { type: String },
   riskReasoning: { type: String },
   keyDates: [{ type: String }],
+  glossary: { type: Map, of: String },
   confidence: { type: Number }
 });
 

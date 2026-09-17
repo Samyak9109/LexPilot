@@ -32,6 +32,7 @@ class ExtractedEntities(BaseModel):
     has_meaningful_content: bool = Field(description="Is this a meaningful legal clause (true) or just boilerplate/page numbers (false)?")
     parties: List[str] = Field(default=[], description="Any parties mentioned")
     key_dates: List[str] = Field(default=[], description="Any important dates or deadlines mentioned")
+    glossary: dict[str, str] = Field(default={}, description="Dictionary of complex legal jargon found in this clause mapped to simple definitions")
 
 class ClauseClassification(BaseModel):
     clause_type: str = Field(description="One of: parties, effective_date, payment_terms, termination_conditions, confidentiality, liability, dispute_resolution, general")

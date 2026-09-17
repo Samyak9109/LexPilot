@@ -269,6 +269,16 @@ function DocumentView() {
                       <p style={{ margin: '0.5rem 0 0 0' }}>{c.riskReasoning}</p>
                     </div>
                   )}
+                  {c.glossary && Object.keys(c.glossary).length > 0 && (
+                    <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', backgroundColor: '#f0f0f0', padding: '0.5rem', borderRadius: '4px' }}>
+                      <strong>Glossary:</strong>
+                      <ul style={{ margin: '0.2rem 0 0 1rem', padding: 0 }}>
+                        {Object.entries(c.glossary).map(([term, def]: any) => (
+                          <li key={term}><em>{term}</em>: {def}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             );
