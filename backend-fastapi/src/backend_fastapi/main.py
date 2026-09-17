@@ -10,6 +10,7 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 from .graph import app_graph
 from .rag import answer_question
+from .checklist import generate_actionable_checklist
 
 load_dotenv()
 
@@ -37,6 +38,13 @@ class AskRequest(BaseModel):
 @app.post("/internal/ask")
 async def ask_document(request: AskRequest, _ = Depends(verify_secret)):
     return await answer_question(request.documentId, request.question, db, embeddings_model)
+
+class ChecklistRequest(BaseModel):
+    documentId: str
+
+@app.post("/internal/generate_checklist")
+async def api_generate_checklist(request: ChecklistRequest, _ = Depends(verify_secret)):
+    return await generate_actionable_checklist(request.documentId, db)
 
 async def process_pdf_background(document_id: str, text: str):
     try:

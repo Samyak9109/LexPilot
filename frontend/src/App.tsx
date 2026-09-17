@@ -49,7 +49,13 @@ function Login({ setAuthToken }: { setAuthToken: (token: string) => void }) {
 function Dashboard() {
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState('');
+  const [docs, setDocs] = useState<any[]>([]);
+  const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    axios.get('/api/documents').then(res => setDocs(res.data)).catch(console.error);
+  }, []);
 
   const handleUpload = async () => {
     if (!file) return;
@@ -71,15 +77,45 @@ function Dashboard() {
     }
   };
 
+  const handleSelectCompare = (id: string) => {
+    setSelectedForCompare(prev => {
+      if (prev.includes(id)) return prev.filter(x => x !== id);
+      if (prev.length >= 2) return [prev[1], id];
+      return [...prev, id];
+    });
+  };
+
   return (
     <div style={{ padding: '2rem' }}>
       <h1>LexPilot Dashboard</h1>
       <p>Upload a contract (PDF/DOCX) for analysis.</p>
       
-      <div style={{ border: '1px solid #ccc', padding: '1rem', marginTop: '1rem' }}>
-        <input type="file" accept=".pdf,.docx" onChange={e => setFile(e.target.files?.[0] || null)} />
+      <div style={{ border: '1px solid #ccc', padding: '1rem', marginTop: '1rem', borderRadius: '4px' }}>
+        <input type="file" accept=".pdf,.docx" onChange={e => setFile(e.target.files?.[0] || null)} aria-label="Upload document" />
         <button onClick={handleUpload} disabled={!file} style={{ marginLeft: '1rem' }}>Analyze Document</button>
         <p style={{ color: 'red' }}>{status}</p>
+      </div>
+
+      <div style={{ marginTop: '2rem' }}>
+        <h2>Your Documents</h2>
+        {selectedForCompare.length === 2 && (
+          <button onClick={() => navigate(`/compare/${selectedForCompare[0]}/${selectedForCompare[1]}`)} style={{ marginBottom: '1rem', backgroundColor: '#4caf50', color: 'white', padding: '0.5rem 1rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+            Compare Selected ({selectedForCompare.length}/2)
+          </button>
+        )}
+        <ul style={{ listStyle: 'none', padding: 0 }}>
+          {docs.map(doc => (
+            <li key={doc._id} style={{ padding: '1rem', border: '1px solid #eee', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <Link to={`/document/${doc._id}`} style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{doc.filename}</Link>
+                <span style={{ marginLeft: '1rem', color: '#666' }}>Status: {doc.status}</span>
+              </div>
+              <label>
+                <input type="checkbox" checked={selectedForCompare.includes(doc._id)} onChange={() => handleSelectCompare(doc._id)} /> Compare
+              </label>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
@@ -134,6 +170,8 @@ function DocumentView() {
   const [doc, setDoc] = useState<any>(null);
   const [clauses, setClauses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [checklist, setChecklist] = useState<any>(null);
+  const [loadingChecklist, setLoadingChecklist] = useState(false);
 
   useEffect(() => {
     let interval = setInterval(() => {
@@ -151,18 +189,49 @@ function DocumentView() {
     return () => clearInterval(interval);
   }, [id]);
 
+  const generateChecklist = async () => {
+    setLoadingChecklist(true);
+    try {
+      const res = await axios.post(`/api/documents/${id}/checklist`);
+      setChecklist(res.data);
+    } catch (err: any) {
+      alert('Failed to generate checklist');
+    }
+    setLoadingChecklist(false);
+  };
+
   if (loading) return <div style={{ padding: '2rem' }}>Loading document status...</div>;
   if (!doc) return <div style={{ padding: '2rem' }}>Document not found.</div>;
 
   return (
-    <div style={{ padding: '2rem' }}>
-      <Link to="/">← Back to Dashboard</Link>
-      <h2>{doc.filename} (Status: {doc.status})</h2>
+    <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column' }}>
+      <div>
+        <Link to="/">← Back to Dashboard</Link>
+        <h2>{doc.filename} (Status: {doc.status})</h2>
+        <button onClick={generateChecklist} disabled={loadingChecklist || doc.status === 'pending'}>
+          {loadingChecklist ? 'Generating Checklist...' : 'Generate Lawyer Checklist'}
+        </button>
+      </div>
+      
+      {checklist && (
+        <div style={{ backgroundColor: '#fffbe6', border: '1px solid #ffe58f', padding: '1rem', marginTop: '1rem', borderRadius: '4px' }}>
+          <h3>Questions for Lawyer</h3>
+          <p><strong>Summary:</strong> {checklist.summary}</p>
+          <ul>
+            {checklist.items.map((item: any, i: number) => (
+              <li key={i} style={{ marginBottom: '0.5rem' }}>
+                {item.action_item} 
+                <a href={`#clause-${item.cited_clause_id}`} style={{ marginLeft: '0.5rem', fontSize: '0.8rem' }}>[Source Clause]</a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       
       {doc.status === 'pending' && <p>Processing document, please wait...</p>}
       
-      <div style={{ display: 'flex', gap: '2rem' }}>
-        <div style={{ flex: 2, maxHeight: '80vh', overflowY: 'auto', paddingRight: '1rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', marginTop: '1rem' }}>
+        <div style={{ flex: '2 1 600px', maxHeight: '80vh', overflowY: 'auto', paddingRight: '1rem' }}>
           {clauses.map((c, i) => {
             const riskColor = c.riskTier === 'red' ? '#ffebee' : c.riskTier === 'yellow' ? '#fff3e0' : '#e8f5e9';
             const riskLabel = c.riskTier === 'red' ? '🔴 HIGH RISK' : c.riskTier === 'yellow' ? '🟡 MEDIUM RISK' : '🟢 STANDARD';
@@ -195,6 +264,46 @@ function DocumentView() {
   );
 }
 
+function CompareView() {
+  const { id1, id2 } = useParams();
+  const [data, setData] = useState<any>(null);
+  const [error, setError] = useState('');
+  
+  useEffect(() => {
+    axios.get(`/api/documents/${id1}/compare/${id2}`)
+      .then(res => setData(res.data))
+      .catch(err => setError(err.response?.data?.error || 'Comparison failed'));
+  }, [id1, id2]);
+
+  if (error) return <div style={{ padding: '2rem', color: 'red' }}>Error: {error}</div>;
+  if (!data) return <div style={{ padding: '2rem' }}>Loading comparison...</div>;
+
+  return (
+    <div style={{ padding: '2rem' }}>
+      <Link to="/">← Back to Dashboard</Link>
+      <h2>Compare Documents</h2>
+      <div style={{ display: 'flex', gap: '1rem', borderBottom: '2px solid #ccc', paddingBottom: '1rem' }}>
+        <h3 style={{ flex: 1 }}>{data.doc1.filename}</h3>
+        <h3 style={{ flex: 1 }}>{data.doc2.filename}</h3>
+      </div>
+      
+      {data.comparison.map((comp: any, i: number) => (
+        <div key={i} style={{ borderBottom: '1px solid #eee', padding: '1rem 0' }}>
+          <h4 style={{ textTransform: 'capitalize' }}>{comp.clauseType || 'General'}</h4>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 300px', backgroundColor: '#f9f9f9', padding: '1rem' }}>
+              {comp.doc1Clauses.length > 0 ? comp.doc1Clauses.map((c: any) => <p key={c._id}>{c.originalText}</p>) : <em>Not present</em>}
+            </div>
+            <div style={{ flex: '1 1 300px', backgroundColor: '#f9f9f9', padding: '1rem' }}>
+              {comp.doc2Clauses.length > 0 ? comp.doc2Clauses.map((c: any) => <p key={c._id}>{c.originalText}</p>) : <em>Not present</em>}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
 
@@ -213,11 +322,12 @@ function App() {
   return (
     <BrowserRouter>
       <div style={{ padding: '1rem', borderBottom: '1px solid #ccc' }}>
-        <button onClick={() => setToken(null)}>Logout</button>
+        <button onClick={() => setToken(null)} aria-label="Logout">Logout</button>
       </div>
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/document/:id" element={<DocumentView />} />
+        <Route path="/compare/:id1/:id2" element={<CompareView />} />
       </Routes>
     </BrowserRouter>
   );

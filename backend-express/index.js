@@ -102,6 +102,15 @@ app.post('/api/documents', authenticateToken, upload.single('document'), async (
   }
 });
 
+app.get('/api/documents', authenticateToken, async (req, res) => {
+  try {
+    const docs = await Document.find({ userId: req.user.userId }).sort({ _id: -1 });
+    res.json(docs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/documents/:id', authenticateToken, async (req, res) => {
   try {
     const doc = await Document.findOne({ _id: req.params.id, userId: req.user.userId });
@@ -144,6 +153,62 @@ app.post('/api/documents/:id/ask', authenticateToken, async (req, res) => {
     if (err.response) {
       return res.status(err.response.status).json(err.response.data);
     }
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/documents/:id/checklist', authenticateToken, async (req, res) => {
+  try {
+    const doc = await Document.findOne({ _id: req.params.id, userId: req.user.userId });
+    if (!doc) return res.status(404).json({ error: 'Document not found' });
+    
+    const response = await axios.post(`${FASTAPI_URL}/internal/generate_checklist`, {
+      documentId: doc._id.toString()
+    }, {
+      headers: { 'X-Internal-Secret': INTERNAL_SECRET }
+    });
+    res.json(response.data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/documents/:id1/compare/:id2', authenticateToken, async (req, res) => {
+  try {
+    const doc1 = await Document.findOne({ _id: req.params.id1, userId: req.user.userId });
+    const doc2 = await Document.findOne({ _id: req.params.id2, userId: req.user.userId });
+    if (!doc1 || !doc2) return res.status(404).json({ error: 'Documents not found' });
+
+    const clauses1 = await DocumentClause.find({ documentId: doc1._id });
+    const clauses2 = await DocumentClause.find({ documentId: doc2._id });
+
+    // Group by clauseType
+    const types1 = new Set(clauses1.map(c => c.clauseType).filter(Boolean));
+    const types2 = new Set(clauses2.map(c => c.clauseType).filter(Boolean));
+    
+    const intersection = new Set([...types1].filter(x => types2.has(x)));
+    const union = new Set([...types1, ...types2]);
+
+    // Structural similarity check
+    if (union.size > 0 && (intersection.size / union.size) < 0.2) {
+      return res.status(400).json({ error: 'Cannot meaningfully compare structurally dissimilar documents.' });
+    }
+
+    const comparison = [];
+    for (const type of union) {
+      comparison.push({
+        clauseType: type,
+        doc1Clauses: clauses1.filter(c => c.clauseType === type),
+        doc2Clauses: clauses2.filter(c => c.clauseType === type)
+      });
+    }
+
+    res.json({
+      doc1: { id: doc1._id, filename: doc1.filename },
+      doc2: { id: doc2._id, filename: doc2.filename },
+      comparison
+    });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
