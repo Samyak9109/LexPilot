@@ -1,3 +1,12 @@
+// Fix: local DNS does not support SRV record queries needed for mongodb+srv://
+// Force Node.js to use Google's public DNS (8.8.8.8) which supports SRV lookups
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first');
+const { Resolver } = dns;
+const resolver = new Resolver();
+resolver.setServers(['8.8.8.8', '8.8.4.4']);
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+
 require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
@@ -45,7 +54,10 @@ app.post('/api/register', async (req, res) => {
     await user.save();
     res.status(201).json({ message: 'User registered' });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    if (err.code === 11000) {
+      return res.status(409).json({ error: 'Username already exists' });
+    }
+    res.status(500).json({ error: 'Internal server error: ' + err.message });
   }
 });
 
@@ -61,7 +73,8 @@ app.post('/api/login', async (req, res) => {
 // Document Routes
 app.post('/api/documents', authenticateToken, upload.single('document'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  if (!req.file.originalname.endsWith('.pdf') && !req.file.originalname.endsWith('.docx')) {
+  const validMimes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+  if (!validMimes.includes(req.file.mimetype)) {
       return res.status(400).json({ error: 'Invalid file type. Only PDF and DOCX are allowed.' });
   }
   if (req.file.size > 20 * 1024 * 1024) {

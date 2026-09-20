@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # We need the API key for Gemini (GEMINI_API_KEY)
-llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0)
+llm = ChatGoogleGenerativeAI(model="gemini-flash-latest", temperature=0)
 
 class ClauseState(TypedDict):
     original_text: str

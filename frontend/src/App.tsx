@@ -3,7 +3,8 @@ import { BrowserRouter, Routes, Route, useNavigate, useParams, Link } from 'reac
 import axios from 'axios';
 
 // --- Axios Config ---
-axios.defaults.baseURL = 'http://localhost:3000';
+// No baseURL needed — Vite dev proxy forwards /api → localhost:3000
+// For production, set VITE_API_BASE_URL env var and use axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL
 
 function Login({ setAuthToken }: { setAuthToken: (token: string) => void }) {
   const [username, setUsername] = useState('');
@@ -187,19 +188,32 @@ function DocumentView() {
   const [loadingChecklist, setLoadingChecklist] = useState(false);
 
   useEffect(() => {
-    let interval = setInterval(() => {
-      axios.get(`/api/documents/${id}`).then(res => {
+    let isMounted = true;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const fetchStatus = async () => {
+      try {
+        const res = await axios.get(`/api/documents/${id}`);
+        if (!isMounted) return;
         setDoc(res.data.document);
         setClauses(res.data.clauses);
         setLoading(false);
-        if (res.data.document.status !== 'pending') clearInterval(interval);
-      }).catch(err => {
+        
+        if (res.data.document.status === 'pending') {
+          timer = setTimeout(fetchStatus, 3000);
+        }
+      } catch (err) {
         console.error(err);
-        setLoading(false);
-        clearInterval(interval);
-      });
-    }, 3000);
-    return () => clearInterval(interval);
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchStatus();
+
+    return () => {
+      isMounted = false;
+      if (timer) clearTimeout(timer);
+    };
   }, [id]);
 
   const generateChecklist = async () => {
@@ -208,7 +222,7 @@ function DocumentView() {
       const res = await axios.post(`/api/documents/${id}/checklist`);
       setChecklist(res.data);
     } catch (err: any) {
-      alert('Failed to generate checklist');
+      alert(err.response?.data?.error || 'Failed to generate checklist');
     }
     setLoadingChecklist(false);
   };

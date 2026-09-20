@@ -1,8 +1,13 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel, Field
 from bson import ObjectId
+from bson.errors import InvalidId
+from fastapi import HTTPException
+from dotenv import load_dotenv
 
-llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.2)
+load_dotenv()
+
+llm = ChatGoogleGenerativeAI(model="gemini-flash-latest", temperature=0.2)
 
 class ChecklistItem(BaseModel):
     action_item: str = Field(description="Actionable advice or a specific question to ask a lawyer.")
@@ -13,9 +18,14 @@ class ChecklistResponse(BaseModel):
     summary: str = Field(description="A brief one-sentence summary of the overall risk profile.")
 
 async def generate_actionable_checklist(document_id: str, db) -> dict:
+    try:
+        doc_object_id = ObjectId(document_id)
+    except (InvalidId, Exception):
+        raise HTTPException(status_code=400, detail=f"Invalid documentId format: '{document_id}'")
+
     # Fetch all clauses for the document that are not 'green'
     clauses = await db.documentclauses.find({
-        "documentId": ObjectId(document_id)
+        "documentId": doc_object_id
     }).to_list(length=100)
     
     risky_clauses = [c for c in clauses if c.get("riskTier") in ["red", "yellow"]]

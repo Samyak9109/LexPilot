@@ -1,0 +1,79 @@
+# ==============================
+# Environment Variables
+# ==============================
+.env
+.env.*
+!.env.example
+
+# ==============================
+# Node.js
+# ==============================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ==============================
+# Python
+# ==============================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+.cache
+
+# Distribution / packaging
+build/
+dist/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# ==============================
+# Project specific (Frontend & Backend)
+# ==============================
+frontend/dist/
+frontend/dist-ssr/
+frontend/coverage/
+
+backend-express/uploads/
+uploads/
+
+graphify-out/
+
+# Database files
+*.sqlite3
+*.db
+*.sqlite
+
+# Logs
+*.log
+logs/
+
+# ==============================
+# OS & IDEs
+# ==============================
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+ehthumbs.db
+.AppleDouble
+.LSOverride

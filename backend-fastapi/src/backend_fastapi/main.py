@@ -21,7 +21,7 @@ MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/lexpilot")
 
 client = AsyncIOMotorClient(MONGODB_URI)
 db = client.get_default_database()
-embeddings_model = GoogleGenerativeAIEmbeddings(model="models/text-embedding-004")
+embeddings_model = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
 
 def verify_secret(x_internal_secret: str = Header(None)):
     if x_internal_secret != INTERNAL_SECRET:

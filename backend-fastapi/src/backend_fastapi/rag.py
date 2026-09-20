@@ -1,10 +1,15 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from pydantic import BaseModel, Field
 from bson import ObjectId
+from bson.errors import InvalidId
+from fastapi import HTTPException
+from dotenv import load_dotenv
 import re
 import os
 
-llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0)
+load_dotenv()
+
+llm = ChatGoogleGenerativeAI(model="gemini-flash-latest", temperature=0)
 
 class QAResponse(BaseModel):
     answer: str = Field(description="The answer to the user's question, or an explicit refusal if the document doesn't address it.")
@@ -12,6 +17,14 @@ class QAResponse(BaseModel):
     exact_quote: str = Field(description="The exact substring from the source document you are relying on.")
 
 async def answer_question(document_id: str, question: str, db, embeddings_model) -> dict:
+    # Validate inputs
+    if not question or not question.strip():
+        raise HTTPException(status_code=400, detail="Question cannot be empty.")
+    try:
+        doc_object_id = ObjectId(document_id)
+    except (InvalidId, Exception):
+        raise HTTPException(status_code=400, detail=f"Invalid documentId format: '{document_id}'")
+
     # 1. Embed the user's question
     query_vector = embeddings_model.embed_query(question)
     
@@ -24,7 +37,7 @@ async def answer_question(document_id: str, question: str, db, embeddings_model)
                 "queryVector": query_vector,
                 "numCandidates": 50,
                 "limit": 5,
-                "filter": { "documentId": ObjectId(document_id) }
+                "filter": { "documentId": doc_object_id }
             }
         },
         {
@@ -42,7 +55,7 @@ async def answer_question(document_id: str, question: str, db, embeddings_model)
     except Exception as e:
         # Fallback if vector index isn't created yet or fails (for MVP ease of testing without Atlas config)
         print("Vector search failed, falling back to basic text retrieval:", str(e))
-        chunks = await db.document_chunks.find({"documentId": ObjectId(document_id)}).limit(5).to_list(length=5)
+        chunks = await db.document_chunks.find({"documentId": doc_object_id}).limit(5).to_list(length=5)
         results = chunks
     
     if not results:
