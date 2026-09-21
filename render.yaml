@@ -34,5 +34,4 @@ services:
         fromService:
           name: lexpilot-express
           type: web
-          property: envVar
           envVarKey: INTERNAL_SECRET
