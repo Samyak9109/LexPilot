@@ -18,12 +18,27 @@ const fs = require('fs');
 const FormData = require('form-data');
 const { User, Document, DocumentClause, QAHistory } = require('./models');
 const { validateUpload } = require('./upload-validation');
+const { allowedOrigins, validateCredentials, validateProductionSecrets } = require('./security-config');
+
+validateProductionSecrets(process.env);
 
 const app = express();
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  next();
+});
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: allowedOrigins(process.env.ALLOWED_ORIGINS),
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Authorization', 'Content-Type'],
+}));
 
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ dest: 'uploads/', limits: { fileSize: 20 * 1024 * 1024, files: 1 } });
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-lexpilot-key';
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/lexpilot';
@@ -50,6 +65,8 @@ const authenticateToken = (req, res, next) => {
 
 // Auth Routes
 app.post('/api/register', async (req, res) => {
+  const validationError = validateCredentials(req.body || {});
+  if (validationError) return res.status(422).json({ error: validationError });
   try {
     const user = new User({ username: req.body.username, password: req.body.password });
     await user.save();
@@ -63,11 +80,16 @@ app.post('/api/register', async (req, res) => {
 });
 
 app.post('/api/login', async (req, res) => {
+  if (typeof req.body?.username !== 'string' || typeof req.body?.password !== 'string') {
+    return res.status(400).json({ error: 'Username and password are required.' });
+  }
   const user = await User.findOne({ username: req.body.username });
   if (!user || !(await user.comparePassword(req.body.password))) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
-  const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '24h' });
+  const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
+    expiresIn: '24h', issuer: 'lexpilot', audience: 'lexpilot-web',
+  });
   res.json({ token });
 });
 
