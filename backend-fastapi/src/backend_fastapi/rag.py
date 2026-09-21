@@ -4,8 +4,8 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import HTTPException
 from dotenv import load_dotenv
-import re
 import os
+from .grounding import verify_grounding
 
 load_dotenv()
 
@@ -86,15 +86,10 @@ User Question: {question}
     exact_quote = llm_res.exact_quote
     cited_ids = llm_res.cited_clause_ids
     
-    # Verify quote exists in the retrieved context
-    if exact_quote and len(exact_quote) > 5:
-        # Normalize whitespace for fuzzy check
-        norm_quote = re.sub(r'\s+', ' ', exact_quote.strip().lower())
-        norm_context = re.sub(r'\s+', ' ', context_text.lower())
-        
-        if norm_quote not in norm_context:
-            answer = "I could not confidently ground my answer in the text. (Failed Grounding Verification)"
-            cited_ids = []
+    retrieved_ids = [str(result["clauseId"]) for result in results]
+    if not verify_grounding(exact_quote, cited_ids, retrieved_ids, context_text):
+        answer = "I could not confidently answer from the text you uploaded. Please rephrase or review the cited clauses directly."
+        cited_ids = []
             
     return {
         "answer": answer,

@@ -945,6 +945,9 @@ function DocumentView() {
       <div style={{ padding:'18px 24px', display:'flex', gap:18, alignItems:'flex-start' }}>
         {/* Clauses */}
         <div style={{ flex:1, minWidth:0 }}>
+          <p role="note" style={{ margin:'0 0 14px', padding:'10px 12px', borderLeft:`3px solid ${C.indigo}`, background:'#eef2ff', color:'#3730a3', fontSize:12, lineHeight:1.55 }}>
+            LexPilot explains your document and highlights questions to consider. It is not legal advice; consult a qualified lawyer before making decisions.
+          </p>
           {/* Checklist panel */}
           {checklist && (
             <div style={{
