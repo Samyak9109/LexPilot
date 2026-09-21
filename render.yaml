@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: lexpilot-express
+    env: node
+    rootDir: backend-express
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20.x
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MONGODB_URI
+        sync: false
+      - key: INTERNAL_SECRET
+        generateValue: true
+      - key: FASTAPI_URL
+        value: "https://lexpilot-fastapi.onrender.com" # Update this to the actual Render URL later if it differs
+
+  - type: web
+    name: lexpilot-fastapi
+    env: python
+    rootDir: backend-fastapi
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn src.backend_fastapi.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.6 # Or 3.12.x if preferred
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: INTERNAL_SECRET
+        fromService:
+          name: lexpilot-express
+          type: web
+          property: envVar
+          envVarKey: INTERNAL_SECRET

@@ -106,3 +106,8 @@ async def upload_document(
     background_tasks.add_task(process_pdf_background, documentId, text, jurisdiction, language)
     
     return {"status": "processing", "documentId": documentId}
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+

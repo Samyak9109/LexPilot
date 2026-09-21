@@ -229,6 +229,25 @@ app.get('/api/documents/:id1/compare/:id2', authenticateToken, async (req, res) 
 
 // Start Express Server
 const PORT = process.env.PORT || 3000;
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date() });
+});
+
+// Health Monitor to prevent sleeping on free tiers
+const RENDER_EXTERNAL_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+setInterval(async () => {
+  try {
+    await axios.get(`${RENDER_EXTERNAL_URL}/health`);
+    console.log('Health ping sent to Express');
+    if (FASTAPI_URL && FASTAPI_URL !== 'http://localhost:8000') {
+      await axios.get(`${FASTAPI_URL}/health`);
+      console.log('Health ping sent to FastAPI');
+    }
+  } catch (err) {
+    console.error('Health monitor ping failed:', err.message);
+  }
+}, 5 * 60 * 1000); // every 5 minutes
+
 app.listen(PORT, () => {
   console.log(`Express API listening on port ${PORT}`);
 });
