@@ -52,9 +52,16 @@ Risky Clauses:
     checklist_chain = llm.with_structured_output(ChecklistResponse)
     try:
         res = checklist_chain.invoke(prompt)
+        # Verify cited_clause_ids exist — LLMs hallucinate ObjectIds
+        valid_ids = {str(c['_id']) for c in risky_clauses}
+        verified_items = [
+            {"action_item": item.action_item, "cited_clause_id": item.cited_clause_id}
+            for item in res.items
+            if item.cited_clause_id in valid_ids
+        ]
         return {
             "summary": res.summary,
-            "items": [{"action_item": item.action_item, "cited_clause_id": item.cited_clause_id} for item in res.items]
+            "items": verified_items
         }
     except Exception as e:
         return {

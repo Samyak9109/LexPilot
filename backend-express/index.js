@@ -186,6 +186,7 @@ app.post('/api/documents/:id/checklist', authenticateToken, async (req, res) => 
   }
 });
 
+// ponytail: compare logic lives here instead of FastAPI per architecture.md §4 — move to POST /internal/compare when FastAPI gets semantic alignment
 app.get('/api/documents/:id1/compare/:id2', authenticateToken, async (req, res) => {
   try {
     const doc1 = await Document.findOne({ _id: req.params.id1, userId: req.user.userId });
