@@ -1,7 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, Header, BackgroundTasks
 from pydantic import BaseModel
-import pdfplumber
-import io
 import os
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -11,6 +9,7 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from .graph import app_graph
 from .rag import answer_question
 from .checklist import generate_actionable_checklist
+from .document_parser import extract_document_text
 
 load_dotenv()
 
@@ -97,11 +96,7 @@ async def upload_document(
     _ = Depends(verify_secret)
 ):
     content = await file.read()
-    text = ""
-    if file.filename.endswith(".pdf"):
-        with pdfplumber.open(io.BytesIO(content)) as pdf:
-            for page in pdf.pages:
-                text += (page.extract_text() or "") + "\n"
+    text = extract_document_text(file.filename or "", content)
     
     background_tasks.add_task(process_pdf_background, documentId, text, jurisdiction, language)
     

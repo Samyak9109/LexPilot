@@ -102,7 +102,7 @@ function Toast({ msg, type, onClose }: { msg:string; type:'error'|'success'; onC
   const s = type === 'error' ? C.riskHigh : C.riskLow;
   const Icon = type === 'error' ? AlertCircle : CheckCircle;
   return (
-    <div style={{
+    <div role={type === 'error' ? 'alert' : 'status'} style={{
       position:'fixed', bottom:24, right:24, zIndex:9999,
       background:s.bg, border:`1px solid ${s.border}`, color:s.color,
       padding:'12px 16px', borderRadius:8, fontSize:13, fontWeight:500,
@@ -112,7 +112,7 @@ function Toast({ msg, type, onClose }: { msg:string; type:'error'|'success'; onC
     }}>
       <Icon size={16} />
       <span style={{ flex:1 }}>{msg}</span>
-      <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'inherit', padding:0, display:'flex' }}>
+      <button aria-label="Dismiss notification" onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', color:'inherit', padding:0, display:'flex' }}>
         <X size={14} />
       </button>
     </div>
@@ -182,7 +182,7 @@ function Sidebar({ onLogout }: { onLogout:()=>void }) {
         </button>
         <div style={{ marginTop:12, fontSize:10, color:'#334155', textAlign:'center', letterSpacing:'0.04em' }}>
           <Shield size={9} style={{ display:'inline', marginRight:3, verticalAlign:'middle' }} />
-          SOC2 TYPE II · 256-BIT TLS
+          YOUR DOCUMENTS STAY IN YOUR ACCOUNT
         </div>
       </div>
     </aside>
@@ -264,13 +264,13 @@ function Login({ setAuthToken }: { setAuthToken:(t:string)=>void }) {
             lineHeight:1.2, letterSpacing:'-0.025em', marginBottom:14,
           }}>Understand every<br />clause. Instantly.</h1>
           <p style={{ color:'#94a3b8', fontSize:15, lineHeight:1.65, marginBottom:40 }}>
-            AI-powered contract analysis that translates complex legalese into clear, actionable insights for legal teams.
+            AI-powered contract analysis that translates complex legalese into clear, actionable insights for people reviewing agreements.
           </p>
 
           {[
             { icon:Sparkles,  title:'Instant risk analysis',     desc:'Real-time flagging of liabilities and deviations' },
             { icon:BookOpen,  title:'Plain English explanations', desc:'Complex legalese made simple and actionable'      },
-            { icon:Shield,    title:'Secure and private',         desc:'Enterprise-grade encryption, zero-knowledge architecture' },
+            { icon:Shield,    title:'Document-scoped access',      desc:'Your documents are visible only in your signed-in account' },
           ].map(({ icon:Icon, title, desc }) => (
             <div key={title} style={{ display:'flex', gap:14, marginBottom:20 }}>
               <div style={{
@@ -287,7 +287,7 @@ function Login({ setAuthToken }: { setAuthToken:(t:string)=>void }) {
           ))}
 
           <div style={{ display:'flex', gap:10, marginTop:40 }}>
-            {['256-bit TLS','SOC2 Type II','GDPR Ready'].map(b => (
+            {['Source citations','Risk reasons','Plain language'].map(b => (
               <span key={b} style={{
                 padding:'4px 10px', background:'rgba(255,255,255,0.05)',
                 border:'1px solid rgba(255,255,255,0.08)',
@@ -331,23 +331,23 @@ function Login({ setAuthToken }: { setAuthToken:(t:string)=>void }) {
 
           <form onSubmit={tab === 'login' ? handleLogin : handleRegister}>
             <div style={{ marginBottom:16 }}>
-              <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#374151', marginBottom:5, letterSpacing:'0.01em' }}>
+              <label htmlFor="username" style={{ display:'block', fontSize:12, fontWeight:600, color:'#374151', marginBottom:5, letterSpacing:'0.01em' }}>
                 Username
               </label>
-              <input className="lp-input" style={inp} placeholder="Enter your username"
+              <input id="username" autoComplete="username" className="lp-input" style={inp} placeholder="Enter your username"
                 value={username} onChange={e => setUsername(e.target.value)} required />
             </div>
 
             <div style={{ marginBottom:24 }}>
-              <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#374151', marginBottom:5, letterSpacing:'0.01em' }}>
+              <label htmlFor="password" style={{ display:'block', fontSize:12, fontWeight:600, color:'#374151', marginBottom:5, letterSpacing:'0.01em' }}>
                 Password
               </label>
               <div style={{ position:'relative' }}>
-                <input className="lp-input" style={{ ...inp, paddingRight:40 }}
+                <input id="password" autoComplete={tab === 'login' ? 'current-password' : 'new-password'} className="lp-input" style={{ ...inp, paddingRight:40 }}
                   type={showPass ? 'text' : 'password'}
                   placeholder="Enter your password"
                   value={password} onChange={e => setPassword(e.target.value)} required />
-                <button type="button" onClick={() => setShowPass(v => !v)} style={{
+                <button type="button" aria-label={showPass ? 'Hide password' : 'Show password'} onClick={() => setShowPass(v => !v)} style={{
                   position:'absolute', right:10, top:'50%', transform:'translateY(-50%)',
                   background:'none', border:'none', cursor:'pointer', color:'#94a3b8', padding:0, display:'flex',
                 }}>
@@ -468,9 +468,10 @@ function Dashboard() {
 
           <form onSubmit={handleUpload} style={{ padding:'20px 22px' }}>
             {/* Drop zone */}
-            <div
+            <div role="button" tabIndex={0} aria-label="Choose a PDF or DOCX document to upload"
               onDragOver={e => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileRef.current?.click(); } }}
               onDrop={e => {
                 e.preventDefault(); setDragOver(false);
                 const f = e.dataTransfer.files[0];
@@ -484,7 +485,7 @@ function Dashboard() {
                 transition:'all 0.15s', marginBottom:16,
               }}
             >
-              <input ref={fileRef} type="file" accept=".pdf,.docx"
+              <input ref={fileRef} type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 style={{ display:'none' }}
                 onChange={e => { setFile(e.target.files?.[0] || null); setUploadStatus(''); }} />
               {file ? (
@@ -630,7 +631,7 @@ function Dashboard() {
                       }}>View</Link>
                     </td>
                     <td style={{ padding:'12px 16px' }}>
-                      <input type="checkbox"
+                      <input type="checkbox" aria-label={`Select ${doc.filename} for comparison`}
                         checked={selectedForCompare.includes(doc._id)}
                         onChange={() => handleSelectCompare(doc._id)}
                         style={{ width:16, height:16, accentColor:C.indigo, cursor:'pointer' }}
@@ -722,11 +723,11 @@ function ChatPanel({ docId }: { docId: string }) {
                 {h.citations?.length > 0 && (
                   <div style={{ marginTop:7, display:'flex', flexWrap:'wrap', gap:4 }}>
                     {h.citations.map((c: string) => (
-                      <span key={c} style={{
+                      <a href={`#clause-${c}`} key={c} style={{
                         fontSize:10, fontWeight:700, padding:'2px 7px',
                         background:'#e0e7ff', color:C.indigo,
-                        borderRadius:999,
-                      }}>§ {c.slice(-4)}</span>
+                        borderRadius:999, textDecoration:'none',
+                      }}>Source § {c.slice(-4)}</a>
                     ))}
                   </div>
                 )}
@@ -758,13 +759,14 @@ function ChatPanel({ docId }: { docId: string }) {
         padding:'10px 12px', borderTop:`1px solid ${C.borderLight}`,
         display:'flex', gap:8,
       }}>
-        <input className="lp-input" value={question} onChange={e => setQuestion(e.target.value)}
+        <label htmlFor="contract-question" style={{ position:'absolute', width:1, height:1, overflow:'hidden', clip:'rect(0 0 0 0)' }}>Ask a question about this contract</label>
+        <input id="contract-question" className="lp-input" value={question} onChange={e => setQuestion(e.target.value)}
           placeholder="Ask about this contract…" style={{
             flex:1, height:36, padding:'0 10px',
             border:`1px solid ${C.border}`, borderRadius:4,
             fontSize:13, fontFamily:'Inter, sans-serif',
           }} />
-        <button type="submit" disabled={loading || !question.trim()} style={{
+        <button type="submit" aria-label="Send question" disabled={loading || !question.trim()} style={{
           width:36, height:36, background:C.indigo, border:'none',
           borderRadius:4, cursor: loading ? 'not-allowed' : 'pointer',
           display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
@@ -818,6 +820,23 @@ function DocumentView() {
       alert(err.response?.data?.error || 'Failed to generate checklist');
     }
     setLoadingChecklist(false);
+  };
+
+  const downloadChecklist = () => {
+    if (!checklist) return;
+    const contents = [
+      '# LexPilot questions for your lawyer',
+      '',
+      checklist.summary,
+      '',
+      ...checklist.items.map((item: any) => `- ${item.action_item} (Source: ${item.cited_clause_id})`),
+    ].join('\n');
+    const url = URL.createObjectURL(new Blob([contents], { type: 'text/markdown;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${doc.filename.replace(/\.[^.]+$/, '') || 'lexpilot-checklist'}-checklist.md`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   if (loading) return (
@@ -937,6 +956,9 @@ function DocumentView() {
                 <BookOpen size={14} />Questions for Your Lawyer
               </h3>
               <p style={{ margin:'0 0 12px', fontSize:13, color:'#78350f' }}>{checklist.summary}</p>
+              <button type="button" onClick={downloadChecklist} style={{ margin:'0 0 12px', padding:'6px 9px', border:`1px solid ${C.riskMid.border}`, borderRadius:4, background:'white', color:C.riskMid.color, cursor:'pointer', fontSize:12, fontWeight:700 }}>
+                Download Markdown
+              </button>
               <ul style={{ margin:0, paddingLeft:18 }}>
                 {checklist.items.map((item: any, i: number) => (
                   <li key={i} style={{ marginBottom:6, fontSize:13, color:'#451a03', lineHeight:1.6 }}>
@@ -965,13 +987,13 @@ function DocumentView() {
                 animation:'fadein 0.2s ease',
               }}>
                 {/* Clause header — click to expand */}
-                <div
+                <button type="button" aria-expanded={expanded} aria-controls={`clause-detail-${c._id}`}
                   onClick={() => setExpandedId(expanded ? null : c._id)}
                   style={{
                     padding:'11px 16px', cursor:'pointer',
                     display:'flex', alignItems:'center', justifyContent:'space-between', gap:12,
                     background: expanded ? C.bg : 'white', borderRadius: expanded ? '8px 8px 0 0' : 8,
-                    transition:'background 0.1s',
+                    transition:'background 0.1s', border:'none', width:'100%', textAlign:'left',
                   }}
                 >
                   <div style={{ display:'flex', alignItems:'center', gap:9, flex:1, minWidth:0 }}>
@@ -989,11 +1011,11 @@ function DocumentView() {
                     <RiskBadge tier={c.riskTier} />
                     <span style={{ fontSize:16, color:'#94a3b8', transition:'transform 0.2s', display:'inline-block', transform: expanded ? 'rotate(180deg)' : 'none' }}>⌄</span>
                   </div>
-                </div>
+                </button>
 
                 {/* Expanded detail */}
                 {expanded && (
-                  <div style={{ borderTop:`1px solid ${C.borderLight}` }}>
+                  <div id={`clause-detail-${c._id}`} style={{ borderTop:`1px solid ${C.borderLight}` }}>
                     <div style={{ display:'flex' }}>
                       {/* Original */}
                       <div style={{ flex:1, padding:'14px 16px', background:C.bg, borderRight:`1px solid ${C.borderLight}` }}>

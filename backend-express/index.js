@@ -17,6 +17,7 @@ const axios = require('axios');
 const fs = require('fs');
 const FormData = require('form-data');
 const { User, Document, DocumentClause, QAHistory } = require('./models');
+const { validateUpload } = require('./upload-validation');
 
 const app = express();
 app.use(express.json());
@@ -73,12 +74,10 @@ app.post('/api/login', async (req, res) => {
 // Document Routes
 app.post('/api/documents', authenticateToken, upload.single('document'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  const validMimes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-  if (!validMimes.includes(req.file.mimetype)) {
-      return res.status(400).json({ error: 'Invalid file type. Only PDF and DOCX are allowed.' });
-  }
-  if (req.file.size > 20 * 1024 * 1024) {
-      return res.status(400).json({ error: 'File size exceeds 20MB limit.' });
+  const validation = validateUpload(req.file);
+  if (!validation.valid) {
+      fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ error: validation.error });
   }
   
   try {
@@ -107,6 +106,8 @@ app.post('/api/documents', authenticateToken, upload.single('document'), async (
     }).catch(err => {
       console.error('FastAPI proxy error:', err.message);
       Document.findByIdAndUpdate(doc._id, { status: 'failed' }).exec();
+    }).finally(() => {
+      fs.unlink(req.file.path, () => {});
     });
 
     res.json({ documentId: doc._id, status: 'pending', filename: req.file.originalname });
