@@ -5,6 +5,7 @@ from langchain_core.prompts import PromptTemplate
 from pydantic import BaseModel, Field
 import os
 from dotenv import load_dotenv
+from .segmentation import segment_document
 
 load_dotenv()
 
@@ -23,7 +24,7 @@ class ClauseState(TypedDict):
 class DocumentState(TypedDict):
     document_id: str
     text: str
-    segments: List[str]
+    segments: List[Dict[str, Any]]
     clauses: List[ClauseState]
     jurisdiction: str
     language: str
@@ -47,33 +48,21 @@ class RiskAssessment(BaseModel):
     market_benchmark: str = Field(default="", description="Briefly benchmark this clause against standard market norms (e.g., 'Market standard is 2 years, this is 5')")
 
 def parse_and_segment(state: DocumentState) -> DocumentState:
-    # Structure-aware chunking approximation (by double newlines/paragraphs)
-    raw_segments = [s.strip() for s in state["text"].split('\n\n') if s.strip()]
-    segments = []
-    # Combine very short segments with the next one
-    current_seg = ""
-    for seg in raw_segments:
-        if len(current_seg) < 100:
-            current_seg += " " + seg
-        else:
-            segments.append(current_seg.strip())
-            current_seg = seg
-    if current_seg:
-        segments.append(current_seg.strip())
+    segments = segment_document(state["text"])
     return {"segments": segments, "clauses": []}
 
 def extract_entities(state: DocumentState) -> DocumentState:
     clauses = []
     extractor = llm.with_structured_output(ExtractedEntities)
     
-    for i, seg in enumerate(state["segments"]):
+    for segment in state["segments"]:
         try:
-            # Fake a source span for now (MVP)
-            res = extractor.invoke(f"Extract entities from this clause: {seg}")
+            text = segment["text"]
+            res = extractor.invoke(f"Extract entities from this clause: {text}")
             if res.has_meaningful_content:
                 clauses.append({
-                    "original_text": seg,
-                    "source_span": (0, len(seg)),
+                    "original_text": text,
+                    "source_span": segment["source_span"],
                     "clause_type": None,
                     "entities": res.model_dump(),
                     "simple_explanation": None,
