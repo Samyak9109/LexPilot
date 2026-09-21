@@ -10,6 +10,8 @@ import {
   AlertTriangle
 } from 'lucide-react';
 
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || '';
+
 // ─── Global styles injected once ─────────────────────────────────────────────
 const GLOBAL_CSS = `
   @keyframes spin   { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
