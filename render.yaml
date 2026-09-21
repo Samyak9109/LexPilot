@@ -2,6 +2,7 @@ services:
   - type: web
     name: lexpilot-express
     env: node
+    plan: free
     rootDir: backend-express
     buildCommand: npm install
     startCommand: npm start
@@ -20,6 +21,7 @@ services:
   - type: web
     name: lexpilot-fastapi
     env: python
+    plan: free
     rootDir: backend-fastapi
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn src.backend_fastapi.main:app --host 0.0.0.0 --port $PORT
