@@ -1,0 +1,473 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "created": "2026-11-16",
+    "description": "LexPilot golden evaluation dataset — 40 questions across contract Q&A use cases",
+    "schema": {
+      "id": "unique question identifier",
+      "category": "easy | multi_hop | unanswerable",
+      "clause_type": "clause taxonomy label from graph.py",
+      "question": "user-facing natural-language question",
+      "ground_truth_answer": "expected answer (verbatim or close paraphrase from source clause); 'NOT_IN_DOCUMENT' for unanswerable",
+      "relevant_chunk_ids": "list of clauseId values that contain the answer; empty for unanswerable",
+      "source_document_type": "type of contract this question is designed for",
+      "needs_review": "true if human legal review recommended before treating as ground truth",
+      "review_note": "reason for review flag, if any"
+    },
+    "coverage": {
+      "easy": 20,
+      "multi_hop": 12,
+      "unanswerable": 8,
+      "total": 40
+    },
+    "document_types_covered": [
+      "employment_agreement",
+      "nda",
+      "freelance_service_contract",
+      "lease_agreement",
+      "vendor_agreement"
+    ]
+  },
+  "questions": [
+    {
+      "id": "Q001",
+      "category": "easy",
+      "clause_type": "parties",
+      "question": "Who are the parties to this agreement?",
+      "ground_truth_answer": "The agreement is between [Party A] and [Party B], identified in the opening clause. ANNOTATOR: replace with actual party names from your test document.",
+      "relevant_chunk_ids": ["CHUNK_PARTIES_01"],
+      "source_document_type": "employment_agreement",
+      "needs_review": true,
+      "review_note": "Ground truth must be populated with real party names from the specific test document loaded into eval."
+    },
+    {
+      "id": "Q002",
+      "category": "easy",
+      "clause_type": "effective_date",
+      "question": "When does this agreement become effective?",
+      "ground_truth_answer": "The agreement becomes effective on the date specified in the effective date clause. ANNOTATOR: replace with actual date from test document.",
+      "relevant_chunk_ids": ["CHUNK_EFFECTIVE_DATE_01"],
+      "source_document_type": "employment_agreement",
+      "needs_review": true,
+      "review_note": "Date must be populated from real test document."
+    },
+    {
+      "id": "Q003",
+      "category": "easy",
+      "clause_type": "payment_terms",
+      "question": "What is the payment amount and schedule?",
+      "ground_truth_answer": "The contract specifies the compensation amount, payment frequency (e.g., monthly/bi-weekly), and due dates in the payment terms clause. ANNOTATOR: populate from test document.",
+      "relevant_chunk_ids": ["CHUNK_PAYMENT_01"],
+      "source_document_type": "freelance_service_contract",
+      "needs_review": true,
+      "review_note": "Needs real payment clause text."
+    },
+    {
+      "id": "Q004",
+      "category": "easy",
+      "clause_type": "termination_conditions",
+      "question": "How many days notice is required to terminate this agreement?",
+      "ground_truth_answer": "ANNOTATOR: populate from termination clause (e.g., '30 days written notice' or '14 days').",
+      "relevant_chunk_ids": ["CHUNK_TERMINATION_01"],
+      "source_document_type": "employment_agreement",
+      "needs_review": true,
+      "review_note": "Termination notice period must come from actual document clause."
+    },
+    {
+      "id": "Q005",
+      "category": "easy",
+      "clause_type": "confidentiality",
+      "question": "What information is considered confidential under this agreement?",
+      "ground_truth_answer": "ANNOTATOR: populate from NDA/confidentiality clause definition of 'Confidential Information'.",
+      "relevant_chunk_ids": ["CHUNK_CONFIDENTIALITY_01"],
+      "source_document_type": "nda",
+      "needs_review": true,
+      "review_note": "Must reflect the specific confidentiality definition in the test NDA."
+    },
+    {
+      "id": "Q006",
+      "category": "easy",
+      "clause_type": "liability",
+      "question": "Is there a cap on liability in this contract?",
+      "ground_truth_answer": "ANNOTATOR: populate from liability/indemnification clause. If a cap exists, state the amount or formula. If none, answer should be 'No liability cap is specified in this document.'",
+      "relevant_chunk_ids": ["CHUNK_LIABILITY_01"],
+      "source_document_type": "vendor_agreement",
+      "needs_review": true,
+      "review_note": "Liability caps vary significantly; must be verified against actual clause."
+    },
+    {
+      "id": "Q007",
+      "category": "easy",
+      "clause_type": "dispute_resolution",
+      "question": "Which law governs disputes under this agreement?",
+      "ground_truth_answer": "ANNOTATOR: populate from dispute resolution / governing law clause.",
+      "relevant_chunk_ids": ["CHUNK_DISPUTE_01"],
+      "source_document_type": "vendor_agreement",
+      "needs_review": true,
+      "review_note": "Governing law jurisdiction must come from actual clause."
+    },
+    {
+      "id": "Q008",
+      "category": "easy",
+      "clause_type": "termination_conditions",
+      "question": "Can either party terminate this agreement without cause?",
+      "ground_truth_answer": "ANNOTATOR: check if termination clause permits 'at-will' or 'without cause' termination. Expected: yes/no plus the specific condition or notice period.",
+      "relevant_chunk_ids": ["CHUNK_TERMINATION_01"],
+      "source_document_type": "freelance_service_contract",
+      "needs_review": true,
+      "review_note": "At-will vs. for-cause distinction is legally significant; reviewer must verify."
+    },
+    {
+      "id": "Q009",
+      "category": "easy",
+      "clause_type": "payment_terms",
+      "question": "What happens if a payment is late?",
+      "ground_truth_answer": "ANNOTATOR: populate from payment terms clause. May include late fees, interest rates, or cure periods.",
+      "relevant_chunk_ids": ["CHUNK_PAYMENT_01", "CHUNK_PAYMENT_02"],
+      "source_document_type": "freelance_service_contract",
+      "needs_review": true,
+      "review_note": "Late payment consequences vary widely; must be verified."
+    },
+    {
+      "id": "Q010",
+      "category": "easy",
+      "clause_type": "general",
+      "question": "What type of contract is this?",
+      "ground_truth_answer": "ANNOTATOR: populate based on the opening recitals or title of the test document (e.g., 'This is a Non-Disclosure Agreement', 'This is an Employment Contract').",
+      "relevant_chunk_ids": ["CHUNK_RECITALS_01"],
+      "source_document_type": "nda",
+      "needs_review": false,
+      "review_note": ""
+    },
+    {
+      "id": "Q011",
+      "category": "easy",
+      "clause_type": "effective_date",
+      "question": "When does this lease expire?",
+      "ground_truth_answer": "ANNOTATOR: populate from lease term clause. Example: 'The lease expires on [date] as stated in Section 2.'",
+      "relevant_chunk_ids": ["CHUNK_TERM_01"],
+      "source_document_type": "lease_agreement",
+      "needs_review": true,
+      "review_note": "Lease end date must come from actual test document."
+    },
+    {
+      "id": "Q012",
+      "category": "easy",
+      "clause_type": "payment_terms",
+      "question": "What is the monthly rent?",
+      "ground_truth_answer": "ANNOTATOR: populate from rent payment clause.",
+      "relevant_chunk_ids": ["CHUNK_RENT_01"],
+      "source_document_type": "lease_agreement",
+      "needs_review": true,
+      "review_note": "Must reflect actual rent amount in test document."
+    },
+    {
+      "id": "Q013",
+      "category": "easy",
+      "clause_type": "general",
+      "question": "Is there a security deposit required?",
+      "ground_truth_answer": "ANNOTATOR: populate from security deposit clause. If present, include amount and conditions for return.",
+      "relevant_chunk_ids": ["CHUNK_DEPOSIT_01"],
+      "source_document_type": "lease_agreement",
+      "needs_review": true,
+      "review_note": "Deposit conditions are legally significant."
+    },
+    {
+      "id": "Q014",
+      "category": "easy",
+      "clause_type": "confidentiality",
+      "question": "How long does the confidentiality obligation last after the agreement ends?",
+      "ground_truth_answer": "ANNOTATOR: populate from post-termination confidentiality clause (e.g., '2 years after termination', 'indefinitely').",
+      "relevant_chunk_ids": ["CHUNK_CONFIDENTIALITY_01", "CHUNK_CONFIDENTIALITY_02"],
+      "source_document_type": "nda",
+      "needs_review": true,
+      "review_note": "Survival period is legally significant and must be verified."
+    },
+    {
+      "id": "Q015",
+      "category": "easy",
+      "clause_type": "parties",
+      "question": "Who is the employer in this agreement?",
+      "ground_truth_answer": "ANNOTATOR: populate from party definitions in employment agreement.",
+      "relevant_chunk_ids": ["CHUNK_PARTIES_01"],
+      "source_document_type": "employment_agreement",
+      "needs_review": false,
+      "review_note": ""
+    },
+    {
+      "id": "Q016",
+      "category": "easy",
+      "clause_type": "liability",
+      "question": "Who is responsible for indemnifying the other party?",
+      "ground_truth_answer": "ANNOTATOR: populate from indemnification clause. Specify which party bears the indemnification obligation and under what conditions.",
+      "relevant_chunk_ids": ["CHUNK_LIABILITY_01"],
+      "source_document_type": "vendor_agreement",
+      "needs_review": true,
+      "review_note": "Indemnification direction (mutual vs. one-sided) is a key risk indicator."
+    },
+    {
+      "id": "Q017",
+      "category": "easy",
+      "clause_type": "termination_conditions",
+      "question": "What constitutes a material breach under this agreement?",
+      "ground_truth_answer": "ANNOTATOR: populate from termination/breach clause. Some contracts define this explicitly; others do not — note if absent.",
+      "relevant_chunk_ids": ["CHUNK_TERMINATION_01", "CHUNK_BREACH_01"],
+      "source_document_type": "vendor_agreement",
+      "needs_review": true,
+      "review_note": "Breach definition may span multiple clauses."
+    },
+    {
+      "id": "Q018",
+      "category": "easy",
+      "clause_type": "general",
+      "question": "Is this agreement assignable to a third party?",
+      "ground_truth_answer": "ANNOTATOR: populate from assignment clause. Many contracts restrict assignment without prior written consent.",
+      "relevant_chunk_ids": ["CHUNK_ASSIGNMENT_01"],
+      "source_document_type": "freelance_service_contract",
+      "needs_review": false,
+      "review_note": ""
+    },
+    {
+      "id": "Q019",
+      "category": "easy",
+      "clause_type": "dispute_resolution",
+      "question": "Is arbitration required to resolve disputes?",
+      "ground_truth_answer": "ANNOTATOR: populate from dispute resolution clause. If arbitration is mandatory, include the venue and rules (e.g., AAA, JAMS, ICC).",
+      "relevant_chunk_ids": ["CHUNK_DISPUTE_01"],
+      "source_document_type": "employment_agreement",
+      "needs_review": true,
+      "review_note": "Mandatory arbitration clauses waive jury trial rights — flag for review."
+    },
+    {
+      "id": "Q020",
+      "category": "easy",
+      "clause_type": "general",
+      "question": "Does this agreement include a non-compete clause?",
+      "ground_truth_answer": "ANNOTATOR: check for non-compete or restrictive covenant clause. If present, include the duration and geographic scope.",
+      "relevant_chunk_ids": ["CHUNK_NONCOMPETE_01"],
+      "source_document_type": "employment_agreement",
+      "needs_review": true,
+      "review_note": "Non-compete enforceability varies by jurisdiction — legal review recommended."
+    },
+    {
+      "id": "Q021",
+      "category": "multi_hop",
+      "clause_type": "termination_conditions",
+      "question": "If I terminate this agreement early, what are the financial consequences?",
+      "ground_truth_answer": "ANNOTATOR: requires cross-referencing the termination clause (notice period, cause requirements) with the payment terms clause (outstanding payments, early termination fees). Populate from both chunks.",
+      "relevant_chunk_ids": ["CHUNK_TERMINATION_01", "CHUNK_PAYMENT_01"],
+      "source_document_type": "freelance_service_contract",
+      "needs_review": true,
+      "review_note": "Multi-hop: answer requires combining termination conditions and payment terms."
+    },
+    {
+      "id": "Q022",
+      "category": "multi_hop",
+      "clause_type": "confidentiality",
+      "question": "What can I share publicly about this project after the contract ends?",
+      "ground_truth_answer": "ANNOTATOR: requires cross-referencing confidentiality clause (what is confidential) + termination/survival clause (how long obligation survives) + any IP clause (ownership of deliverables). Populate from all relevant chunks.",
+      "relevant_chunk_ids": ["CHUNK_CONFIDENTIALITY_01", "CHUNK_CONFIDENTIALITY_02", "CHUNK_IP_01"],
+      "source_document_type": "freelance_service_contract",
+      "needs_review": true,
+      "review_note": "Multi-hop across confidentiality, IP, and survival clauses. High legal stakes."
+    },
+    {
+      "id": "Q023",
+      "category": "multi_hop",
+      "clause_type": "payment_terms",
+      "question": "What is the total maximum amount I could owe if I breach this contract?",
+      "ground_truth_answer": "ANNOTATOR: multi-hop — combine liability cap clause, penalty/liquidated damages clause, and any indemnification obligations. Sum or describe the aggregate exposure.",
+      "relevant_chunk_ids": ["CHUNK_LIABILITY_01", "CHUNK_PAYMENT_01", "CHUNK_INDEMNITY_01"],
+      "source_document_type": "vendor_agreement",
+      "needs_review": true,
+      "review_note": "Financial exposure calculation requires reading multiple clauses. Reviewer must verify math."
+    },
+    {
+      "id": "Q024",
+      "category": "multi_hop",
+      "clause_type": "general",
+      "question": "Under what conditions can the other party change the terms of this agreement?",
+      "ground_truth_answer": "ANNOTATOR: requires cross-referencing the amendment clause (how changes are made) and any unilateral modification rights. Populate from amendment and notice clauses.",
+      "relevant_chunk_ids": ["CHUNK_AMENDMENT_01", "CHUNK_NOTICE_01"],
+      "source_document_type": "employment_agreement",
+      "needs_review": true,
+      "review_note": "Unilateral modification rights are a significant risk flag."
+    },
+    {
+      "id": "Q025",
+      "category": "multi_hop",
+      "clause_type": "lease_agreement",
+      "question": "What happens if I need to leave before my lease ends — what do I owe and what options do I have?",
+      "ground_truth_answer": "ANNOTATOR: combine early termination clause, security deposit conditions, subletting clause, and any break clause. Populate from all relevant chunks.",
+      "relevant_chunk_ids": ["CHUNK_TERMINATION_01", "CHUNK_DEPOSIT_01", "CHUNK_SUBLETTING_01"],
+      "source_document_type": "lease_agreement",
+      "needs_review": true,
+      "review_note": "Common tenant question; answer spans multiple lease clauses."
+    },
+    {
+      "id": "Q026",
+      "category": "multi_hop",
+      "clause_type": "liability",
+      "question": "If the product I deliver has a defect, what are my obligations and for how long?",
+      "ground_truth_answer": "ANNOTATOR: combine warranty clause (defect remediation obligations) + liability clause (limits) + indemnification clause (third-party claims). Populate from relevant chunks.",
+      "relevant_chunk_ids": ["CHUNK_WARRANTY_01", "CHUNK_LIABILITY_01", "CHUNK_INDEMNITY_01"],
+      "source_document_type": "vendor_agreement",
+      "needs_review": true,
+      "review_note": "Warranty survival period and liability cap interaction is legally complex."
+    },
+    {
+      "id": "Q027",
+      "category": "multi_hop",
+      "clause_type": "general",
+      "question": "What notice do I need to give and to whom if I want to exercise my right to terminate?",
+      "ground_truth_answer": "ANNOTATOR: combine termination clause (trigger conditions) + notice clause (form and delivery method) + parties clause (correct recipient / contact address). Populate from all three.",
+      "relevant_chunk_ids": ["CHUNK_TERMINATION_01", "CHUNK_NOTICE_01", "CHUNK_PARTIES_01"],
+      "source_document_type": "freelance_service_contract",
+      "needs_review": true,
+      "review_note": "Multi-hop across termination, notice requirements, and party addresses."
+    },
+    {
+      "id": "Q028",
+      "category": "multi_hop",
+      "clause_type": "confidentiality",
+      "question": "Am I allowed to work for a competitor after this contract ends, and are there any conditions?",
+      "ground_truth_answer": "ANNOTATOR: combine non-compete clause (if present), non-solicitation clause, and confidentiality survival clause. If no non-compete exists, answer accordingly.",
+      "relevant_chunk_ids": ["CHUNK_NONCOMPETE_01", "CHUNK_NONSOLICITATION_01", "CHUNK_CONFIDENTIALITY_02"],
+      "source_document_type": "employment_agreement",
+      "needs_review": true,
+      "review_note": "Non-compete enforceability is jurisdiction-dependent. High legal stakes."
+    },
+    {
+      "id": "Q029",
+      "category": "multi_hop",
+      "clause_type": "payment_terms",
+      "question": "What is the process for raising a dispute about an invoice?",
+      "ground_truth_answer": "ANNOTATOR: combine payment terms clause (invoice dispute window) + dispute resolution clause (process and forum). Populate from both chunks.",
+      "relevant_chunk_ids": ["CHUNK_PAYMENT_01", "CHUNK_DISPUTE_01"],
+      "source_document_type": "vendor_agreement",
+      "needs_review": false,
+      "review_note": ""
+    },
+    {
+      "id": "Q030",
+      "category": "multi_hop",
+      "clause_type": "general",
+      "question": "Who owns the work I produce under this agreement, and does that change after the contract ends?",
+      "ground_truth_answer": "ANNOTATOR: combine IP/work-for-hire clause (ownership assignment) + termination/survival clause (whether ownership persists post-termination) + any license-back provision.",
+      "relevant_chunk_ids": ["CHUNK_IP_01", "CHUNK_TERMINATION_01"],
+      "source_document_type": "freelance_service_contract",
+      "needs_review": true,
+      "review_note": "IP ownership in work-for-hire vs. assignment arrangements has significant implications."
+    },
+    {
+      "id": "Q031",
+      "category": "multi_hop",
+      "clause_type": "general",
+      "question": "If the company is acquired, does this agreement automatically transfer to the new owner?",
+      "ground_truth_answer": "ANNOTATOR: combine assignment clause (restrictions on transfer) + change of control clause (if present) + termination trigger clauses. Some contracts allow termination on change of control.",
+      "relevant_chunk_ids": ["CHUNK_ASSIGNMENT_01", "CHUNK_CHANGE_OF_CONTROL_01"],
+      "source_document_type": "employment_agreement",
+      "needs_review": true,
+      "review_note": "Change-of-control provisions are deal-specific and require close reading."
+    },
+    {
+      "id": "Q032",
+      "category": "multi_hop",
+      "clause_type": "general",
+      "question": "Can the landlord enter my apartment without notice, and under what conditions?",
+      "ground_truth_answer": "ANNOTATOR: combine landlord access/entry clause + notice clause + emergency exception provisions. Standard market practice is 24–48 hours written notice; flag if shorter.",
+      "relevant_chunk_ids": ["CHUNK_ACCESS_01", "CHUNK_NOTICE_01"],
+      "source_document_type": "lease_agreement",
+      "needs_review": true,
+      "review_note": "Entry rights vary by jurisdiction; local tenant law may supersede contract terms."
+    },
+    {
+      "id": "Q033",
+      "category": "unanswerable",
+      "clause_type": "general",
+      "question": "What is the market rate for this type of contract in my city?",
+      "ground_truth_answer": "NOT_IN_DOCUMENT",
+      "relevant_chunk_ids": [],
+      "source_document_type": "any",
+      "needs_review": false,
+      "review_note": "Out-of-document question. System must refuse, not extrapolate from general knowledge."
+    },
+    {
+      "id": "Q034",
+      "category": "unanswerable",
+      "clause_type": "general",
+      "question": "Is this contract legal in California?",
+      "ground_truth_answer": "NOT_IN_DOCUMENT",
+      "relevant_chunk_ids": [],
+      "source_document_type": "any",
+      "needs_review": false,
+      "review_note": "Legal validity question requires legal advice. System must refuse and redirect."
+    },
+    {
+      "id": "Q035",
+      "category": "unanswerable",
+      "clause_type": "general",
+      "question": "What is a standard non-compete duration under Indian law?",
+      "ground_truth_answer": "NOT_IN_DOCUMENT",
+      "relevant_chunk_ids": [],
+      "source_document_type": "any",
+      "needs_review": false,
+      "review_note": "General legal knowledge question unrelated to the uploaded document. Must be refused."
+    },
+    {
+      "id": "Q036",
+      "category": "unanswerable",
+      "clause_type": "general",
+      "question": "Should I sign this contract?",
+      "ground_truth_answer": "NOT_IN_DOCUMENT",
+      "relevant_chunk_ids": [],
+      "source_document_type": "any",
+      "needs_review": false,
+      "review_note": "Legal advice request. System must refuse per PRD.md G4 and design.md content guidelines."
+    },
+    {
+      "id": "Q037",
+      "category": "unanswerable",
+      "clause_type": "payment_terms",
+      "question": "What was the last invoice amount paid?",
+      "ground_truth_answer": "NOT_IN_DOCUMENT",
+      "relevant_chunk_ids": [],
+      "source_document_type": "vendor_agreement",
+      "needs_review": false,
+      "review_note": "Historical transaction data is not in a contract document. System must refuse."
+    },
+    {
+      "id": "Q038",
+      "category": "unanswerable",
+      "clause_type": "general",
+      "question": "What is the company's annual revenue?",
+      "ground_truth_answer": "NOT_IN_DOCUMENT",
+      "relevant_chunk_ids": [],
+      "source_document_type": "any",
+      "needs_review": false,
+      "review_note": "Financial data not present in a standard contract. System must refuse."
+    },
+    {
+      "id": "Q039",
+      "category": "unanswerable",
+      "clause_type": "dispute_resolution",
+      "question": "Who won the last arbitration case under this agreement?",
+      "ground_truth_answer": "NOT_IN_DOCUMENT",
+      "relevant_chunk_ids": [],
+      "source_document_type": "any",
+      "needs_review": false,
+      "review_note": "Historical dispute outcome not in document. System must refuse."
+    },
+    {
+      "id": "Q040",
+      "category": "unanswerable",
+      "clause_type": "general",
+      "question": "Has this contract ever been amended before?",
+      "ground_truth_answer": "NOT_IN_DOCUMENT",
+      "relevant_chunk_ids": [],
+      "source_document_type": "any",
+      "needs_review": false,
+      "review_note": "Amendment history is not contained in the original contract document. System must refuse."
+    }
+  ]
+}
