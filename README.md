@@ -1,6 +1,14 @@
 # LexPilot
 
+[![Evaluation Suite](https://img.shields.io/badge/Evaluation-Ragas%20%7C%20Langfuse-blue)](EVAL.md)
+[![Measured p50 Latency](https://img.shields.io/badge/p50%20Latency-1952ms-brightgreen)](EVAL.md)
+[![Measured TTFT](https://img.shields.io/badge/p50%20TTFT-1282ms-success)](EVAL.md)
+[![Reranker Overhead](https://img.shields.io/badge/Reranker%20p50-32ms-informational)](EVAL.md)
+[![Dataset](https://img.shields.io/badge/Golden%20Dataset-40%20Questions-purple)](eval/dataset.json)
+
 **LexPilot** is a GenAI-powered legal document copilot that helps non-lawyers understand, analyze, compare, and navigate legal documents in plain language. It aims to reduce the comprehension gap by turning complicated legal documents into understandable information, evidence-backed insights, and actionable next steps — without replacing professional legal judgment.
+
+For comprehensive metrics, latency profiling, and evaluation reports, see [EVAL.md](EVAL.md).
 
 ---
 
