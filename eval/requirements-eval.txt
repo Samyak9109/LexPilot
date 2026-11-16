@@ -1,0 +1,16 @@
+# Eval-only dependencies (beyond the main app's requirements.txt)
+# Install inside the backend-fastapi uv environment:
+#   cd backend-fastapi && uv pip install -r ../eval/requirements-eval.txt
+
+# Phase 3 — Retrieval: CrossEncoder reranker
+sentence-transformers>=3.0.0
+
+# Phase 4 — Answer quality
+ragas>=0.1.0
+
+# Phase 5 — Latency tracing
+langfuse>=2.0.0
+
+# Shared utilities
+tabulate>=0.9.0
+tqdm>=4.0.0

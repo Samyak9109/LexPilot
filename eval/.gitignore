@@ -1,0 +1,6 @@
+# Auto-generated result files — do not commit
+results/*.json
+results/*.md
+
+# Keep the directory itself
+!results/.gitkeep
