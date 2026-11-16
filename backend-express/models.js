@@ -46,12 +46,25 @@ const qaHistorySchema = new mongoose.Schema({
   question: { type: String, required: true },
   answer: { type: String, required: true },
   citedClauseIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'DocumentClause' }],
+  rating: { type: Number }, // 1 = thumbs up, -1 = thumbs down
+  feedbackText: { type: String },
+  feedbackTimestamp: { type: Date },
   timestamp: { type: Date, default: Date.now }
+});
+
+const sessionSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  sessionToken: { type: String },
+  userAgent: { type: String },
+  ip: { type: String },
+  createdAt: { type: Date, default: Date.now },
+  lastActive: { type: Date, default: Date.now }
 });
 
 const User = mongoose.model('User', userSchema);
 const Document = mongoose.model('Document', documentSchema);
 const DocumentClause = mongoose.model('DocumentClause', documentClauseSchema);
 const QAHistory = mongoose.model('QAHistory', qaHistorySchema);
+const Session = mongoose.model('Session', sessionSchema);
 
-module.exports = { User, Document, DocumentClause, QAHistory };
+module.exports = { User, Document, DocumentClause, QAHistory, Session };

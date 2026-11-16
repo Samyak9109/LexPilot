@@ -16,9 +16,14 @@ const cors = require('cors');
 const axios = require('axios');
 const fs = require('fs');
 const FormData = require('form-data');
-const { User, Document, DocumentClause, QAHistory } = require('./models');
+const { User, Document, DocumentClause, QAHistory, Session } = require('./models');
 const { validateUpload } = require('./upload-validation');
 const { allowedOrigins, validateCredentials, validateProductionSecrets } = require('./security-config');
+const { PostHog } = require('posthog-node');
+
+const posthog = process.env.POSTHOG_API_KEY
+  ? new PostHog(process.env.POSTHOG_API_KEY, { host: process.env.POSTHOG_HOST || 'https://app.posthog.com' })
+  : null;
 
 validateProductionSecrets(process.env);
 
@@ -90,6 +95,26 @@ app.post('/api/login', async (req, res) => {
   const token = jwt.sign({ userId: user._id }, JWT_SECRET, {
     expiresIn: '24h', issuer: 'lexpilot', audience: 'lexpilot-web',
   });
+
+  try {
+    const session = new Session({
+      userId: user._id,
+      sessionToken: token,
+      userAgent: req.headers['user-agent'] || 'unknown',
+      ip: req.ip || req.connection?.remoteAddress || 'unknown'
+    });
+    await session.save();
+    if (posthog) {
+      posthog.capture({
+        distinctId: user._id.toString(),
+        event: 'user_login',
+        properties: { username: user.username }
+      });
+    }
+  } catch (sessionErr) {
+    console.error('Session logging error:', sessionErr.message);
+  }
+
   res.json({ token });
 });
 
@@ -184,11 +209,82 @@ app.post('/api/documents/:id/ask', authenticateToken, async (req, res) => {
     });
     await qa.save();
 
-    res.json(response.data);
+    if (posthog) {
+      posthog.capture({
+        distinctId: req.user.userId,
+        event: 'document_ask',
+        properties: {
+          documentId: doc._id.toString(),
+          question: question,
+          citationsCount: (response.data.citations || []).length
+        }
+      });
+    }
+
+    res.json({ ...response.data, qaId: qa._id });
   } catch (err) {
     if (err.response) {
       return res.status(err.response.status).json(err.response.data);
     }
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Q&A Thumbs Up / Down Feedback
+app.post('/api/qa/:id/feedback', authenticateToken, async (req, res) => {
+  try {
+    const { rating, feedbackText } = req.body;
+    if (rating !== 1 && rating !== -1) {
+      return res.status(400).json({ error: 'Rating must be 1 (thumbs up) or -1 (thumbs down)' });
+    }
+    const qa = await QAHistory.findOne({ _id: req.params.id, userId: req.user.userId });
+    if (!qa) return res.status(404).json({ error: 'Q&A record not found' });
+
+    qa.rating = rating;
+    qa.feedbackText = feedbackText || '';
+    qa.feedbackTimestamp = new Date();
+    await qa.save();
+
+    if (posthog) {
+      posthog.capture({
+        distinctId: req.user.userId,
+        event: 'qa_feedback',
+        properties: {
+          qaId: qa._id.toString(),
+          documentId: qa.documentId.toString(),
+          rating: rating === 1 ? 'thumbs_up' : 'thumbs_down',
+          feedbackText: feedbackText || ''
+        }
+      });
+    }
+
+    res.json({ status: 'ok', qaId: qa._id, rating: qa.rating });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin Stats Endpoint
+app.get('/admin/stats', async (req, res) => {
+  try {
+    const totalUsers = await User.countDocuments();
+    const totalSessions = await Session.countDocuments();
+    const totalQueries = await QAHistory.countDocuments();
+    const thumbsUp = await QAHistory.countDocuments({ rating: 1 });
+    const thumbsDown = await QAHistory.countDocuments({ rating: -1 });
+    const totalRated = thumbsUp + thumbsDown;
+    const avgRating = totalRated > 0 ? Number(((thumbsUp / totalRated) * 100).toFixed(1)) : 0;
+
+    res.json({
+      totalUsers,
+      totalSessions,
+      totalQueries,
+      avgRating,
+      thumbsUp,
+      thumbsDown,
+      totalRated
+    });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

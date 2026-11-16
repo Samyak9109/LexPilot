@@ -17,9 +17,10 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "form-data": "^4.0.2",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.10.0",
-    "form-data": "^4.0.2",
-    "multer": "^2.3.0"
+    "multer": "^2.3.0",
+    "posthog-node": "^5.74.0"
   }
 }

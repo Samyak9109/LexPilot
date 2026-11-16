@@ -7,7 +7,7 @@ import {
   Scale, LayoutDashboard, FileText, GitCompare, LogOut, Shield,
   Upload, Sparkles, CheckCircle, Clock, AlertCircle, Send, Loader2,
   ChevronLeft, BookOpen, Calendar, FileSearch, Eye, EyeOff, X,
-  AlertTriangle
+  AlertTriangle, ThumbsUp, ThumbsDown
 } from 'lucide-react';
 
 axios.defaults.baseURL = import.meta.env.VITE_API_URL || '';
@@ -664,11 +664,23 @@ function ChatPanel({ docId }: { docId: string }) {
     setLoading(true); setQuestion('');
     try {
       const res = await axios.post(`/api/documents/${docId}/ask`, { question: q });
-      setHistory(prev => [...prev, { q, a: res.data.answer, citations: res.data.citations }]);
+      setHistory(prev => [...prev, { q, a: res.data.answer, citations: res.data.citations, qaId: res.data.qaId, rating: undefined }]);
     } catch (err: any) {
       setHistory(prev => [...prev, { q, a: 'Error: ' + (err.response?.data?.error || 'Failed to get answer') }]);
     }
     setLoading(false);
+  };
+
+  const handleFeedback = async (index: number, qaId?: string, rating?: number) => {
+    if (!rating) return;
+    try {
+      if (qaId) {
+        await axios.post(`/api/qa/${qaId}/feedback`, { rating });
+      }
+      setHistory(prev => prev.map((item, idx) => idx === index ? { ...item, rating } : item));
+    } catch (err) {
+      console.error('Feedback error:', err);
+    }
   };
 
   return (
@@ -720,17 +732,45 @@ function ChatPanel({ docId }: { docId: string }) {
                 fontSize:13, lineHeight:1.65,
               }}>
                 {h.a}
-                {h.citations?.length > 0 && (
-                  <div style={{ marginTop:7, display:'flex', flexWrap:'wrap', gap:4 }}>
-                    {h.citations.map((c: string) => (
-                      <a href={`#clause-${c}`} key={c} style={{
-                        fontSize:10, fontWeight:700, padding:'2px 7px',
-                        background:'#e0e7ff', color:C.indigo,
-                        borderRadius:999, textDecoration:'none',
-                      }}>Source § {c.slice(-4)}</a>
-                    ))}
+                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  {h.citations?.length > 0 ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {h.citations.map((c: string) => (
+                        <a href={`#clause-${c}`} key={c} style={{
+                          fontSize: 10, fontWeight: 700, padding: '2px 7px',
+                          background: '#e0e7ff', color: C.indigo,
+                          borderRadius: 999, textDecoration: 'none',
+                        }}>Source § {c.slice(-4)}</a>
+                      ))}
+                    </div>
+                  ) : <div />}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleFeedback(i, h.qaId, 1)}
+                      title="Helpful"
+                      style={{
+                        border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px 4px',
+                        color: h.rating === 1 ? '#059669' : '#94a3b8',
+                        display: 'flex', alignItems: 'center',
+                      }}
+                    >
+                      <ThumbsUp size={13} fill={h.rating === 1 ? '#059669' : 'none'} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleFeedback(i, h.qaId, -1)}
+                      title="Not helpful"
+                      style={{
+                        border: 'none', background: 'transparent', cursor: 'pointer', padding: '2px 4px',
+                        color: h.rating === -1 ? '#dc2626' : '#94a3b8',
+                        display: 'flex', alignItems: 'center',
+                      }}
+                    >
+                      <ThumbsDown size={13} fill={h.rating === -1 ? '#dc2626' : 'none'} />
+                    </button>
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
