@@ -1,13 +1,15 @@
 from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, Header, BackgroundTasks
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import os
+import json
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 from .graph import app_graph
-from .rag import answer_question
+from .rag import answer_question, answer_question_stream
 from .checklist import generate_actionable_checklist
 from .document_parser import extract_document_text
 
@@ -37,6 +39,13 @@ class AskRequest(BaseModel):
 @app.post("/internal/ask")
 async def ask_document(request: AskRequest, _ = Depends(verify_secret)):
     return await answer_question(request.documentId, request.question, db, embeddings_model)
+
+@app.post("/internal/ask_stream")
+async def ask_document_stream(request: AskRequest, _ = Depends(verify_secret)):
+    async def event_generator():
+        async for chunk in answer_question_stream(request.documentId, request.question, db, embeddings_model):
+            yield json.dumps(chunk) + "\n"
+    return StreamingResponse(event_generator(), media_type="application/x-ndjson")
 
 class ChecklistRequest(BaseModel):
     documentId: str
@@ -105,4 +114,3 @@ async def upload_document(
 @app.get("/health")
 async def health():
     return {"status": "ok"}
-
