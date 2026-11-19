@@ -124,9 +124,9 @@ User Question: {question}
     answer = llm_res.answer
     exact_quote = llm_res.exact_quote
     cited_ids = llm_res.cited_clause_ids
-    
+
     retrieved_ids = [str(result["clauseId"]) for result in results]
-    if not verify_grounding(exact_quote, cited_ids, retrieved_ids, context_text):
+    if not await verify_grounding(exact_quote, cited_ids, retrieved_ids, context_text, db):
         answer = "I could not confidently answer from the text you uploaded. Please rephrase or review the cited clauses directly."
         cited_ids = []
             

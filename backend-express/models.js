@@ -22,7 +22,9 @@ const documentSchema = new mongoose.Schema({
   status: { type: String, default: 'pending' },
   jurisdiction: { type: String },
   language: { type: String, default: 'English' },
-  docType: { type: String }
+  docType: { type: String },
+  keyDates: [{ type: String }],
+  glossary: { type: Map, of: String }
 });
 
 const documentClauseSchema = new mongoose.Schema({
@@ -61,10 +63,22 @@ const sessionSchema = new mongoose.Schema({
   lastActive: { type: Date, default: Date.now }
 });
 
+const summarySchema = new mongoose.Schema({
+  documentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Document', required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  shareToken: { type: String, required: true, unique: true },
+  summary: { type: String, required: true },
+  riskSummary: { type: String },
+  clauseCount: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now },
+  expiresAt: { type: Date }
+});
+
 const User = mongoose.model('User', userSchema);
 const Document = mongoose.model('Document', documentSchema);
 const DocumentClause = mongoose.model('DocumentClause', documentClauseSchema);
 const QAHistory = mongoose.model('QAHistory', qaHistorySchema);
 const Session = mongoose.model('Session', sessionSchema);
+const Summary = mongoose.model('Summary', summarySchema);
 
-module.exports = { User, Document, DocumentClause, QAHistory, Session };
+module.exports = { User, Document, DocumentClause, QAHistory, Session, Summary };

@@ -28,6 +28,8 @@ class DocumentState(TypedDict):
     clauses: List[ClauseState]
     jurisdiction: str
     language: str
+    key_dates: List[str]
+    glossary: dict[str, str]
 
 # Pydantic Schemas for Structured Output
 class ExtractedEntities(BaseModel):
@@ -46,6 +48,14 @@ class RiskAssessment(BaseModel):
     risk_tier: str = Field(description="One of: green, yellow, red")
     risk_reasoning: str = Field(description="Why this risk tier was assigned")
     market_benchmark: str = Field(default="", description="Briefly benchmark this clause against standard market norms (e.g., 'Market standard is 2 years, this is 5')")
+
+
+class KeyDatesExtraction(BaseModel):
+    dates: List[str] = Field(description="All dates, deadlines, and time periods mentioned in the document")
+
+
+class GlossaryExtraction(BaseModel):
+    terms: dict[str, str] = Field(default={}, description="Legal terms found in the document mapped to plain English definitions")
 
 def parse_and_segment(state: DocumentState) -> DocumentState:
     segments = segment_document(state["text"])
@@ -90,7 +100,7 @@ def generate_explanations(state: DocumentState) -> DocumentState:
     clauses = state.get("clauses", [])
     language = state.get("language", "English")
     explainer = llm.with_structured_output(ClauseExplanation)
-    
+
     for c in clauses:
         try:
             res = explainer.invoke(f"Explain this legal clause simply to a non-lawyer. Reply ONLY in {language}. Clause: {c['original_text']}")
@@ -99,14 +109,62 @@ def generate_explanations(state: DocumentState) -> DocumentState:
             c["simple_explanation"] = "Explanation generation failed."
     return {"clauses": clauses}
 
+
+def extract_key_dates(state: DocumentState) -> DocumentState:
+    """Extract all dates/deadlines from the full document for FR-010."""
+    text = state.get("text", "")
+    language = state.get("language", "English")
+    extractor = llm.with_structured_output(KeyDatesExtraction)
+
+    try:
+        res = extractor.invoke(
+            f"Extract ALL dates, deadlines, notice periods, and time periods from this legal document. "
+            f"Return as a list of strings. Include context (e.g., 'Lease expires December 31, 2025', '30 days notice required'). "
+            f"Document: {text[:15000]}"  # Limit to avoid token limits
+        )
+        # Store at document level for the frontend banner
+        return {"key_dates": res.dates}
+    except Exception:
+        return {"key_dates": []}
+
+
+def extract_glossary(state: DocumentState) -> DocumentState:
+    """Extract legal glossary terms from the full document for FR-011."""
+    text = state.get("text", "")
+    language = state.get("language", "English")
+    extractor = llm.with_structured_output(GlossaryExtraction)
+
+    try:
+        res = extractor.invoke(
+            f"Identify complex legal jargon in this document and provide plain English definitions. "
+            f"Return as a dictionary mapping term -> definition. Only include terms a non-lawyer wouldn't know. "
+            f"Document: {text[:15000]}"
+        )
+        return {"glossary": res.terms}
+    except Exception:
+        return {"glossary": {}}
+
+
 def risk_score(state: DocumentState) -> DocumentState:
     clauses = state.get("clauses", [])
     jurisdiction = state.get("jurisdiction", "Global/Agnostic")
     risker = llm.with_structured_output(RiskAssessment)
-    
+
     for c in clauses:
         try:
-            res = risker.invoke(f"Assess the risk of this clause (green/yellow/red) according to the legal norms of {jurisdiction}. Provide reasoning explicitly mentioning {jurisdiction} laws or norms if applicable: {c['original_text']}")
+            # Explicit jurisdiction context for FR-008
+            if jurisdiction and jurisdiction != "Global/Agnostic":
+                prompt = (
+                    f"Assess the risk of this clause (green/yellow/red) according to {jurisdiction} legal norms. "
+                    f"Explicitly reference {jurisdiction} statutes, case law, or market practice in your reasoning. "
+                    f"Clause: {c['original_text']}"
+                )
+            else:
+                prompt = (
+                    f"Assess the risk of this clause (green/yellow/red) using general commercial contract norms. "
+                    f"State that analysis is jurisdiction-agnostic. Clause: {c['original_text']}"
+                )
+            res = risker.invoke(prompt)
             c["risk_tier"] = res.risk_tier
             c["risk_reasoning"] = res.risk_reasoning
             c["market_benchmark"] = res.market_benchmark
@@ -124,6 +182,8 @@ workflow.add_node("extract", extract_entities)
 workflow.add_node("classify", classify_clauses)
 workflow.add_node("risk_score", risk_score)
 workflow.add_node("explain", generate_explanations)
+workflow.add_node("key_dates", extract_key_dates)
+workflow.add_node("glossary", extract_glossary)
 
 # Edges
 workflow.add_edge(START, "parse")
@@ -131,7 +191,9 @@ workflow.add_edge("parse", "extract")
 workflow.add_edge("extract", "classify")
 workflow.add_edge("classify", "risk_score")
 workflow.add_edge("risk_score", "explain")
-workflow.add_edge("explain", END)
+workflow.add_edge("explain", "key_dates")
+workflow.add_edge("key_dates", "glossary")
+workflow.add_edge("glossary", END)
 
 # Compile
 app_graph = workflow.compile()

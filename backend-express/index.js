@@ -305,41 +305,85 @@ app.post('/api/documents/:id/checklist', authenticateToken, async (req, res) => 
   }
 });
 
-// ponytail: compare logic lives here instead of FastAPI per architecture.md §4 — move to POST /internal/compare when FastAPI gets semantic alignment
 app.get('/api/documents/:id1/compare/:id2', authenticateToken, async (req, res) => {
   try {
     const doc1 = await Document.findOne({ _id: req.params.id1, userId: req.user.userId });
     const doc2 = await Document.findOne({ _id: req.params.id2, userId: req.user.userId });
     if (!doc1 || !doc2) return res.status(404).json({ error: 'Documents not found' });
 
-    const clauses1 = await DocumentClause.find({ documentId: doc1._id });
-    const clauses2 = await DocumentClause.find({ documentId: doc2._id });
+    // Call FastAPI internal compare endpoint
+    const response = await axios.post(`${FASTAPI_URL}/internal/compare`, {
+      documentIdA: doc1._id.toString(),
+      documentIdB: doc2._id.toString()
+    }, {
+      headers: { 'X-Internal-Secret': INTERNAL_SECRET }
+    });
 
-    // Group by clauseType
-    const types1 = new Set(clauses1.map(c => c.clauseType).filter(Boolean));
-    const types2 = new Set(clauses2.map(c => c.clauseType).filter(Boolean));
-    
-    const intersection = new Set([...types1].filter(x => types2.has(x)));
-    const union = new Set([...types1, ...types2]);
-
-    // Structural similarity check
-    if (union.size > 0 && (intersection.size / union.size) < 0.2) {
-      return res.status(400).json({ error: 'Cannot meaningfully compare structurally dissimilar documents.' });
+    res.json(response.data);
+  } catch (err) {
+    if (err.response) {
+      return res.status(err.response.status).json(err.response.data);
     }
+    res.status(500).json({ error: err.message });
+  }
+});
 
-    const comparison = [];
-    for (const type of union) {
-      comparison.push({
-        clauseType: type,
-        doc1Clauses: clauses1.filter(c => c.clauseType === type),
-        doc2Clauses: clauses2.filter(c => c.clauseType === type)
-      });
+// Shareable Read-Only Summary (Phase 4 stretch)
+app.post('/api/documents/:id/share', authenticateToken, async (req, res) => {
+  try {
+    const doc = await Document.findOne({ _id: req.params.id, userId: req.user.userId });
+    if (!doc) return res.status(404).json({ error: 'Document not found' });
+    if (doc.status !== 'processed') return res.status(400).json({ error: 'Document must be processed before sharing.' });
+
+    const clauses = await DocumentClause.find({ documentId: doc._id });
+    const riskCount = {
+      red: clauses.filter(c => c.riskTier === 'red').length,
+      yellow: clauses.filter(c => c.riskTier === 'yellow').length,
+      green: clauses.filter(c => c.riskTier === 'green').length,
+    };
+
+    const summary = `Document: ${doc.filename}\n` +
+      `Jurisdiction: ${doc.jurisdiction || 'Not specified'}\n` +
+      `Clauses identified: ${clauses.length}\n` +
+      `High risk: ${riskCount.red} | Medium risk: ${riskCount.yellow} | Standard: ${riskCount.green}\n` +
+      `\nThis is an auto-generated summary from LexPilot. It is not legal advice.`;
+
+    const riskSummary = riskCount.red > 0
+      ? `${riskCount.red} high-risk clause(s) flagged. Review recommended.`
+      : 'No high-risk clauses flagged.';
+
+    const shareToken = require('crypto').randomBytes(12).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    const share = new Summary({
+      documentId: doc._id,
+      userId: req.user.userId,
+      shareToken,
+      summary,
+      riskSummary,
+      clauseCount: clauses.length,
+      expiresAt
+    });
+    await share.save();
+
+    res.json({ shareToken, summary, riskSummary, expiresAt: expiresAt.toISOString() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/share/:token', async (req, res) => {
+  try {
+    const share = await Summary.findOne({ shareToken: req.params.token });
+    if (!share) return res.status(404).json({ error: 'Share link not found or expired.' });
+    if (share.expiresAt && share.expiresAt < new Date()) {
+      return res.status(410).json({ error: 'Share link has expired.' });
     }
-
     res.json({
-      doc1: { id: doc1._id, filename: doc1.filename },
-      doc2: { id: doc2._id, filename: doc2.filename },
-      comparison
+      summary: share.summary,
+      riskSummary: share.riskSummary,
+      clauseCount: share.clauseCount,
+      createdAt: share.createdAt
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

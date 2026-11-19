@@ -7,7 +7,7 @@ import {
   Scale, LayoutDashboard, FileText, GitCompare, LogOut, Shield,
   Upload, Sparkles, CheckCircle, Clock, AlertCircle, Send, Loader2,
   ChevronLeft, BookOpen, Calendar, FileSearch, Eye, EyeOff, X,
-  AlertTriangle, ThumbsUp, ThumbsDown
+  AlertTriangle, ThumbsUp, ThumbsDown, Share2
 } from 'lucide-react';
 
 axios.defaults.baseURL = import.meta.env.VITE_API_URL || '';
@@ -879,6 +879,18 @@ function DocumentView() {
     URL.revokeObjectURL(url);
   };
 
+  const generateShareLink = async () => {
+    if (doc.status !== 'processed') return;
+    try {
+      const res = await axios.post(`/api/documents/${id}/share`);
+      const shareUrl = `${window.location.origin}/share/${res.data.shareToken}`;
+      await navigator.clipboard.writeText(shareUrl);
+      alert('Share link copied to clipboard!');
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to generate share link');
+    }
+  };
+
   if (loading) return (
     <div style={{ marginLeft:240, display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', fontFamily:'Inter, sans-serif' }}>
       <div style={{ textAlign:'center' }}>
@@ -896,7 +908,10 @@ function DocumentView() {
     </div>
   );
 
-  const keyDates = clauses.flatMap(c => c.keyDates || []).filter(Boolean);
+  const keyDates = [
+    ...(doc.keyDates || []),
+    ...clauses.flatMap(c => c.keyDates || [])
+  ].filter(Boolean);
   const riskCount = {
     red:    clauses.filter(c => c.riskTier === 'red').length,
     yellow: clauses.filter(c => c.riskTier === 'yellow').length,
@@ -947,6 +962,19 @@ function DocumentView() {
               : <BookOpen size={12} />}
             {loadingChecklist ? 'Generating…' : 'Lawyer Checklist'}
           </button>
+          <button onClick={generateShareLink}
+            disabled={doc.status !== 'processed'}
+            style={{
+              display:'flex', alignItems:'center', gap:6,
+              padding:'7px 14px', background:'white', color:C.indigo,
+              border:`1px solid ${C.indigo}`, borderRadius:4, fontSize:12, fontWeight:600,
+              cursor: doc.status !== 'processed' ? 'not-allowed' : 'pointer',
+              opacity: doc.status !== 'processed' ? 0.55 : 1,
+              transition:'all 0.15s',
+            }}>
+            <Share2 size={12} />
+            {doc.status !== 'processed' ? 'Processing…' : 'Share Summary'}
+          </button>
         </div>
       </div>
 
@@ -964,6 +992,28 @@ function DocumentView() {
             <div style={{ display:'flex', flexWrap:'wrap', gap:'4px 16px', marginTop:4 }}>
               {keyDates.map((d: string, i: number) => (
                 <span key={i} style={{ fontSize:13, color:'#1e3a8a' }}>• {d}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Document-level Glossary banner */}
+      {doc.glossary && Object.keys(doc.glossary).length > 0 && (
+        <div style={{
+          background:'#fafafa', borderBottom:'1px solid #e5e7eb',
+          padding:'10px 24px', display:'flex', alignItems:'flex-start', gap:10,
+        }}>
+          <BookOpen size={15} color="#6b7280" style={{ flexShrink:0, marginTop:1 }} />
+          <div>
+            <span style={{ fontWeight:700, fontSize:11, color:'#374151', textTransform:'uppercase', letterSpacing:'0.06em' }}>
+              Legal Glossary
+            </span>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:'8px 16px', marginTop:4 }}>
+              {Object.entries(doc.glossary).map(([term, def]: any, i: number) => (
+                <span key={i} style={{ fontSize:12, color:'#4b5563' }}>
+                  <span style={{ fontWeight:700, color:C.indigo }}>{term}</span>: {def}
+                </span>
               ))}
             </div>
           </div>
@@ -1223,6 +1273,68 @@ function CompareView() {
   );
 }
 
+// ─── Share View (read-only public link) ─────────────────────────────────────────
+function ShareView() {
+  const { token } = useParams();
+  const [data, setData] = useState<any>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    axios.get(`/api/share/${token}`)
+      .then(res => { setData(res.data); setLoading(false); })
+      .catch(err => { setError(err.response?.data?.error || 'Failed to load'); setLoading(false); });
+  }, [token]);
+
+  if (loading) return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', fontFamily:'Inter, sans-serif' }}>
+      <div style={{ textAlign:'center' }}>
+        <Loader2 size={30} color={C.indigo} style={{ animation:'spin 1s linear infinite', marginBottom:12 }} />
+        <div style={{ color:C.slate, fontSize:14 }}>Loading shared summary…</div>
+      </div>
+    </div>
+  );
+
+  if (error) return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', fontFamily:'Inter, sans-serif' }}>
+      <div style={{ textAlign:'center', padding:24 }}>
+        <AlertCircle size={36} color={C.riskHigh.color} style={{ marginBottom:12 }} />
+        <div style={{ color:C.riskHigh.color, fontSize:16, fontWeight:600 }}>{error}</div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', background:C.bg, fontFamily:'Inter, sans-serif', padding:24 }}>
+      <div style={{ width:'100%', maxWidth:700, background:'white', borderRadius:12, border:`1px solid ${C.border}`, boxShadow:'0 4px 12px rgba(15,23,42,0.08)', padding:32 }}>
+        <div style={{ textAlign:'center', marginBottom:24 }}>
+          <div style={{ width:56, height:56, background:C.indigo, borderRadius:12, margin:'0 auto 16px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <Scale size={28} color="white" />
+          </div>
+          <h1 style={{ margin:0, fontSize:22, fontWeight:700, color:C.navy }}>Shared Document Summary</h1>
+          <p style={{ margin:'8px 0 0', color:C.slate, fontSize:14 }}>Read-only view via LexPilot</p>
+        </div>
+
+        <div style={{ background:C.bg, borderRadius:8, padding:20, marginBottom:20, whiteSpace:'pre-wrap', fontFamily:'monospace', fontSize:13, lineHeight:1.6, color:C.navy }}>
+          {data.summary}
+        </div>
+
+        {data.riskSummary && (
+          <div style={{ padding:'12px 16px', background:C.riskMid.bg, border:`1px solid ${C.riskMid.border}`, borderRadius:8, marginBottom:20 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:C.riskMid.color, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>Risk Summary</div>
+            <p style={{ margin:0, fontSize:13, color:C.riskMid.color }}>{data.riskSummary}</p>
+          </div>
+        )}
+
+        <div style={{ fontSize:12, color:C.slate, textAlign:'center', paddingTop:16, borderTop:`1px solid ${C.borderLight}` }}>
+          <Shield size={12} style={{ display:'inline', marginRight:4, verticalAlign:'middle' }} />
+          This summary was generated by AI and is not legal advice. Consult a qualified lawyer before making decisions.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── App Shell ────────────────────────────────────────────────────────────────
 function AppShell({ setToken }: { setToken:(t:string|null)=>void }) {
   return (
@@ -1234,6 +1346,7 @@ function AppShell({ setToken }: { setToken:(t:string|null)=>void }) {
           <Route path="/documents"           element={<Dashboard />}    />
           <Route path="/document/:id"        element={<DocumentView />} />
           <Route path="/compare/:id1/:id2"   element={<CompareView />}  />
+          <Route path="/share/:token"        element={<ShareView />}    />
         </Routes>
       </div>
     </div>
