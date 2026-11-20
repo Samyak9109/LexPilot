@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "lexpilot-api",
+  "main": "backend-express/worker-entry.js",
+  "compatibility_date": "2024-11-20",
+  "compatibility_flags": ["nodejs_compat"],
+  "node_compat": true,
+  "vars": {
+    "NODE_ENV": "production"
+  },
+  "kv_namespaces": [],
+  "d1_databases": [],
+  "r2_buckets": [],
+  "services": [],
+  "queues": [],
+  "durable_objects": {},
+  "migrations": [],
+  "observability": {
+    "enabled": true
+  }
+}

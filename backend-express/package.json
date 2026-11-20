@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "node --test"
+    "test": "node --test",
+    "build:worker": "esbuild index.js --bundle --platform=node --target=node20 --outfile=dist/worker.js --external:mongoose --external:bcrypt --external:multer --external:form-data"
   },
   "keywords": [],
   "author": "",
@@ -22,5 +23,8 @@
     "mongoose": "^9.10.0",
     "multer": "^2.3.0",
     "posthog-node": "^5.74.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
   }
 }
